@@ -414,7 +414,10 @@ void nv_gpu_destroy_channel(NVGpuContext *ctx, NVChannel *channel)
     channel->is_active = false;
 
     /* Push buffer 메모리 해제 */
-    /* 실제로는 할당 추적 필요 */
+    NVMemoryAlloc pb_alloc = {
+        .gpu_addr = channel->pb_base
+    };
+    nv_gpu_free_memory(ctx, &pb_alloc);
 
     /* 배열에서 제거 */
     for (uint32_t i = 0; i < ctx->channel_count; i++) {
@@ -462,6 +465,16 @@ int nv_gpu_alloc_memory(NVGpuContext *ctx, NVMemoryAlloc *alloc)
         ctx->vram_free -= aligned_size;
     }
 
+    /* 가상 GPU 모드용 backing store 할당 */
+    alloc->backing_store = malloc(aligned_size);
+    if (!alloc->backing_store) {
+        if (alloc->type == NV_MEM_TYPE_VIDEO) {
+            ctx->vram_free += aligned_size;
+        }
+        return NV_ERR_NO_MEMORY;
+    }
+    memset(alloc->backing_store, 0, aligned_size);
+
     /* 할당 기록 */
     NVMemoryAlloc *record = malloc(sizeof(NVMemoryAlloc));
     memcpy(record, alloc, sizeof(NVMemoryAlloc));
@@ -490,6 +503,10 @@ void nv_gpu_free_memory(NVGpuContext *ctx, NVMemoryAlloc *alloc)
     for (uint32_t i = 0; i < ctx->alloc_count; i++) {
         if (ctx->allocations[i] &&
             ctx->allocations[i]->gpu_addr == alloc->gpu_addr) {
+            /* backing_store 해제 */
+            if (ctx->allocations[i]->backing_store) {
+                free(ctx->allocations[i]->backing_store);
+            }
             free(ctx->allocations[i]);
             for (uint32_t j = i; j < ctx->alloc_count - 1; j++) {
                 ctx->allocations[j] = ctx->allocations[j + 1];
@@ -498,6 +515,21 @@ void nv_gpu_free_memory(NVGpuContext *ctx, NVMemoryAlloc *alloc)
             break;
         }
     }
+}
+
+/* GPU 주소로 할당 기록 찾기 */
+static NVMemoryAlloc* nv_find_alloc_by_addr(NVGpuContext *ctx, uint64_t gpu_addr)
+{
+    for (uint32_t i = 0; i < ctx->alloc_count; i++) {
+        if (ctx->allocations[i]) {
+            uint64_t alloc_start = ctx->allocations[i]->gpu_addr;
+            uint64_t alloc_end = alloc_start + ctx->allocations[i]->size;
+            if (gpu_addr >= alloc_start && gpu_addr < alloc_end) {
+                return ctx->allocations[i];
+            }
+        }
+    }
+    return NULL;
 }
 
 /**
@@ -512,8 +544,14 @@ int nv_gpu_memcpy_h2d(NVGpuContext *ctx, uint64_t dst,
 
     NV_DBG("Memcpy H2D: %zu bytes to 0x%" PRIX64, size, dst);
 
-    /* DMA를 통한 데이터 전송 */
-    /* USB4 터널을 통해 PCIe DMA 수행 */
+    /* 가상 GPU 모드: backing_store에 복사 */
+    NVMemoryAlloc *alloc = nv_find_alloc_by_addr(ctx, dst);
+    if (alloc && alloc->backing_store) {
+        size_t offset = dst - alloc->gpu_addr;
+        if (offset + size <= alloc->size) {
+            memcpy((char*)alloc->backing_store + offset, src, size);
+        }
+    }
 
     ctx->bytes_transferred += size;
 
@@ -532,6 +570,15 @@ int nv_gpu_memcpy_d2h(NVGpuContext *ctx, void *dst,
 
     NV_DBG("Memcpy D2H: %zu bytes from 0x%" PRIX64, size, src);
 
+    /* 가상 GPU 모드: backing_store에서 복사 */
+    NVMemoryAlloc *alloc = nv_find_alloc_by_addr(ctx, src);
+    if (alloc && alloc->backing_store) {
+        size_t offset = src - alloc->gpu_addr;
+        if (offset + size <= alloc->size) {
+            memcpy(dst, (char*)alloc->backing_store + offset, size);
+        }
+    }
+
     ctx->bytes_transferred += size;
 
     return NV_SUCCESS;
@@ -549,7 +596,20 @@ int nv_gpu_memcpy_d2d(NVGpuContext *ctx, uint64_t dst,
 
     NV_DBG("Memcpy D2D: %zu bytes from 0x%" PRIX64 " to 0x%" PRIX64, size, src, dst);
 
-    /* CE (Copy Engine) 사용 */
+    /* 가상 GPU 모드: backing_store 간 복사 */
+    NVMemoryAlloc *src_alloc = nv_find_alloc_by_addr(ctx, src);
+    NVMemoryAlloc *dst_alloc = nv_find_alloc_by_addr(ctx, dst);
+
+    if (src_alloc && src_alloc->backing_store &&
+        dst_alloc && dst_alloc->backing_store) {
+        size_t src_offset = src - src_alloc->gpu_addr;
+        size_t dst_offset = dst - dst_alloc->gpu_addr;
+        if (src_offset + size <= src_alloc->size &&
+            dst_offset + size <= dst_alloc->size) {
+            memcpy((char*)dst_alloc->backing_store + dst_offset,
+                   (char*)src_alloc->backing_store + src_offset, size);
+        }
+    }
 
     return NV_SUCCESS;
 }

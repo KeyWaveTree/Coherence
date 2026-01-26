@@ -105,10 +105,13 @@ typedef struct cbStream_st *cbStream_t;
 typedef struct cbEvent_st *cbEvent_t;
 
 /* dim3 구조체 (커널 실행용) */
+#ifndef __DIM3_DEFINED__
+#define __DIM3_DEFINED__
 #ifndef __cplusplus
 typedef struct dim3 {
     unsigned int x, y, z;
 } dim3;
+#endif
 #endif
 
 /* ========== 초기화 및 종료 ========== */

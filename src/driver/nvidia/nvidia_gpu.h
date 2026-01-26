@@ -72,6 +72,7 @@ typedef struct NVMemoryAlloc {
     NVMemoryType        type;           /* 메모리 타입 */
     bool                is_mapped;      /* 호스트에 매핑됨 */
     uint32_t            flags;          /* 할당 플래그 */
+    void               *backing_store;  /* 가상 GPU 모드용 backing store */
 } NVMemoryAlloc;
 
 /* 채널 정보 */

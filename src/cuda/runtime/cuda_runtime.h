@@ -149,9 +149,12 @@ typedef struct CUstream_st *cudaStream_t;
 typedef struct CUevent_st *cudaEvent_t;
 
 /* dim3 구조체 */
+#ifndef __DIM3_DEFINED__
+#define __DIM3_DEFINED__
 typedef struct dim3 {
     unsigned int x, y, z;
 } dim3;
+#endif
 
 /* 초기화 및 버전 */
 cudaError_t cudaDriverGetVersion(int *driverVersion);

@@ -24,6 +24,14 @@
 #define CUDA_DBG(fmt, ...)
 #endif
 
+/* 호스트/관리 메모리 추적 */
+#define MAX_HOST_ALLOCS 1024
+
+typedef struct HostAllocInfo {
+    void *ptr;
+    bool is_managed;
+} HostAllocInfo;
+
 /* 전역 상태 */
 typedef struct CudaBridgeState {
     bool                    initialized;
@@ -34,6 +42,8 @@ typedef struct CudaBridgeState {
     int                     current_device;
     cudaError_t             last_error;
     pthread_mutex_t         lock;
+    HostAllocInfo           host_allocs[MAX_HOST_ALLOCS];
+    int                     host_alloc_count;
 } CudaBridgeState;
 
 static CudaBridgeState g_state = { .initialized = false };
@@ -66,6 +76,10 @@ static void set_error(cudaError_t error)
 {
     g_state.last_error = error;
 }
+
+/* 전방 선언 */
+static void track_host_alloc(void *ptr, bool is_managed);
+static bool free_tracked_host_alloc(void *ptr);
 
 /* 버전 정보 */
 #define CUDABRIDGE_VERSION_MAJOR 1
@@ -494,6 +508,12 @@ cudaError_t cudaFree(void *devPtr)
         return cudaSuccess;  /* NULL은 무시 */
     }
 
+    /* 먼저 호스트/관리 메모리인지 확인 */
+    if (free_tracked_host_alloc(devPtr)) {
+        CUDA_DBG("cudaFree: %p (managed/host memory)", devPtr);
+        return cudaSuccess;
+    }
+
     NVGpuContext *gpu = get_current_gpu();
     if (!gpu) {
         set_error(cudaErrorInvalidDevice);
@@ -608,6 +628,33 @@ cudaError_t cudaMemsetAsync(void *devPtr, int value, size_t count,
     return cudaMemset(devPtr, value, count);
 }
 
+/* 호스트 메모리 추적 추가 */
+static void track_host_alloc(void *ptr, bool is_managed)
+{
+    if (g_state.host_alloc_count < MAX_HOST_ALLOCS) {
+        g_state.host_allocs[g_state.host_alloc_count].ptr = ptr;
+        g_state.host_allocs[g_state.host_alloc_count].is_managed = is_managed;
+        g_state.host_alloc_count++;
+    }
+}
+
+/* 호스트 메모리 추적에서 제거하고 해제 */
+static bool free_tracked_host_alloc(void *ptr)
+{
+    for (int i = 0; i < g_state.host_alloc_count; i++) {
+        if (g_state.host_allocs[i].ptr == ptr) {
+            free(ptr);
+            /* 배열에서 제거 */
+            for (int j = i; j < g_state.host_alloc_count - 1; j++) {
+                g_state.host_allocs[j] = g_state.host_allocs[j + 1];
+            }
+            g_state.host_alloc_count--;
+            return true;
+        }
+    }
+    return false;
+}
+
 /**
  * 호스트 메모리 할당 (페이지 락)
  */
@@ -625,6 +672,9 @@ cudaError_t cudaMallocHost(void **ptr, size_t size)
         return cudaErrorMemoryAllocation;
     }
 
+    /* 추적 추가 */
+    track_host_alloc(*ptr, false);
+
     return cudaSuccess;
 }
 
@@ -633,7 +683,9 @@ cudaError_t cudaMallocHost(void **ptr, size_t size)
  */
 cudaError_t cudaFreeHost(void *ptr)
 {
-    free(ptr);
+    if (ptr) {
+        free_tracked_host_alloc(ptr);
+    }
     return cudaSuccess;
 }
 
