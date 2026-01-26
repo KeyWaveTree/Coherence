@@ -159,6 +159,10 @@ if(BUILD_TESTS)
     add_executable(test_stream tests/test_stream.c)
     target_link_libraries(test_stream cudabridge)
     add_test(NAME stream_test COMMAND test_stream)
+
+    # ARM 호환성 테스트 (라이브러리 의존성 없음)
+    add_executable(test_arm_compat tests/test_arm_compat.c)
+    add_test(NAME arm_compat_test COMMAND test_arm_compat)
 endif()
 
 # 예제 빌드

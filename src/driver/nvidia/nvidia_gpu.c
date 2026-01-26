@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <inttypes.h>
 
 /* 에러 코드 */
 #define NV_SUCCESS              0
@@ -159,7 +160,7 @@ int nv_gpu_init(NVGpuContext *ctx, PCIeDevice *pcie_device)
 
     NV_LOG("GPU initialized: %s (%s architecture)",
            ctx->info.name, nv_arch_name(ctx->info.architecture));
-    NV_LOG("  VRAM: %llu MB, SM count: %d, Compute: %d.%d",
+    NV_LOG("  VRAM: %" PRIu64 " MB, SM count: %d, Compute: %d.%d",
            ctx->info.vram_size / (1024 * 1024),
            ctx->info.sm_info.count,
            ctx->info.compute_cap_major,
@@ -197,7 +198,7 @@ void nv_gpu_shutdown(NVGpuContext *ctx)
         pcie_unmap_bar(ctx->pcie_device, 1);
     }
 
-    NV_LOG("GPU statistics: %llu kernel launches, %llu bytes transferred",
+    NV_LOG("GPU statistics: %" PRIu64 " kernel launches, %" PRIu64 " bytes transferred",
            ctx->kernel_launches, ctx->bytes_transferred);
 
     ctx->state = NV_GPU_STATE_UNINITIALIZED;
@@ -396,7 +397,7 @@ int nv_gpu_create_channel(NVGpuContext *ctx, NVChannel **channel_out)
     ctx->channels[ctx->channel_count++] = channel;
     *channel_out = channel;
 
-    NV_LOG("Created channel %d (pb_base=0x%llX)", channel->id, channel->pb_base);
+    NV_LOG("Created channel %d (pb_base=0x%" PRIX64 ")", channel->id, channel->pb_base);
 
     return NV_SUCCESS;
 }
@@ -446,7 +447,7 @@ int nv_gpu_alloc_memory(NVGpuContext *ctx, NVMemoryAlloc *alloc)
     size_t aligned_size = (alloc->size + 4095) & ~4095ULL;
 
     if (alloc->type == NV_MEM_TYPE_VIDEO && aligned_size > ctx->vram_free) {
-        NV_ERR_LOG("Insufficient VRAM: requested %zu, available %llu",
+        NV_ERR_LOG("Insufficient VRAM: requested %zu, available %" PRIu64,
                    aligned_size, ctx->vram_free);
         return NV_ERR_NO_MEMORY;
     }
@@ -466,7 +467,7 @@ int nv_gpu_alloc_memory(NVGpuContext *ctx, NVMemoryAlloc *alloc)
     memcpy(record, alloc, sizeof(NVMemoryAlloc));
     ctx->allocations[ctx->alloc_count++] = record;
 
-    NV_DBG("Allocated %zu bytes at GPU addr 0x%llX (type=%d)",
+    NV_DBG("Allocated %zu bytes at GPU addr 0x%" PRIX64 " (type=%d)",
            aligned_size, alloc->gpu_addr, alloc->type);
 
     return NV_SUCCESS;
@@ -479,7 +480,7 @@ void nv_gpu_free_memory(NVGpuContext *ctx, NVMemoryAlloc *alloc)
 {
     if (!ctx || !alloc) return;
 
-    NV_DBG("Freeing memory at GPU addr 0x%llX", alloc->gpu_addr);
+    NV_DBG("Freeing memory at GPU addr 0x%" PRIX64, alloc->gpu_addr);
 
     if (alloc->type == NV_MEM_TYPE_VIDEO) {
         ctx->vram_free += alloc->size;
@@ -509,7 +510,7 @@ int nv_gpu_memcpy_h2d(NVGpuContext *ctx, uint64_t dst,
         return NV_ERR_INVALID_PARAM;
     }
 
-    NV_DBG("Memcpy H2D: %zu bytes to 0x%llX", size, dst);
+    NV_DBG("Memcpy H2D: %zu bytes to 0x%" PRIX64, size, dst);
 
     /* DMA를 통한 데이터 전송 */
     /* USB4 터널을 통해 PCIe DMA 수행 */
@@ -529,7 +530,7 @@ int nv_gpu_memcpy_d2h(NVGpuContext *ctx, void *dst,
         return NV_ERR_INVALID_PARAM;
     }
 
-    NV_DBG("Memcpy D2H: %zu bytes from 0x%llX", size, src);
+    NV_DBG("Memcpy D2H: %zu bytes from 0x%" PRIX64, size, src);
 
     ctx->bytes_transferred += size;
 
@@ -546,7 +547,7 @@ int nv_gpu_memcpy_d2d(NVGpuContext *ctx, uint64_t dst,
         return NV_ERR_INVALID_PARAM;
     }
 
-    NV_DBG("Memcpy D2D: %zu bytes from 0x%llX to 0x%llX", size, src, dst);
+    NV_DBG("Memcpy D2D: %zu bytes from 0x%" PRIX64 " to 0x%" PRIX64, size, src, dst);
 
     /* CE (Copy Engine) 사용 */
 

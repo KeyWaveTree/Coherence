@@ -10,6 +10,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include "../../kernel/pcie/pcie_tunnel.h"
 
 /* NVIDIA GPU 아키텍처 */

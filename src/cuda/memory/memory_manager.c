@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <inttypes.h>
 
 #ifdef __APPLE__
 #include <mach/mach.h>
@@ -97,7 +98,7 @@ int cb_memory_manager_init(CBMemoryManager *mgr, int device_id,
     }
 
     MEM_LOG("Memory manager initialized");
-    MEM_LOG("  Device pool: base=0x%llX size=%.2f GB",
+    MEM_LOG("  Device pool: base=0x%" PRIX64 " size=%.2f GB",
             mgr->device_pool.base_addr,
             (double)mgr->device_pool.total_size / (1024 * 1024 * 1024));
 
@@ -166,7 +167,7 @@ static void pool_shutdown(CBMemoryPool *pool)
     while (block) {
         CBMemoryBlock *next = block->next;
         if (block->is_allocated) {
-            MEM_ERR("Memory leak: %zu bytes at 0x%llX",
+            MEM_ERR("Memory leak: %zu bytes at 0x%" PRIX64,
                     block->size, block->gpu_addr);
         }
         free(block);
@@ -352,7 +353,7 @@ int cb_malloc_device(CBMemoryManager *mgr, void **ptr, size_t size)
     }
     mgr->alloc_count++;
 
-    MEM_DBG("Allocated %zu bytes at 0x%llX (device)", size, block->gpu_addr);
+    MEM_DBG("Allocated %zu bytes at 0x%" PRIX64 " (device)", size, block->gpu_addr);
 
     return CB_SUCCESS;
 }
@@ -375,7 +376,7 @@ int cb_free_device(CBMemoryManager *mgr, void *ptr)
     mgr->total_allocated -= block->size;
     mgr->free_count++;
 
-    MEM_DBG("Freed %zu bytes at 0x%llX (device)", block->size, block->gpu_addr);
+    MEM_DBG("Freed %zu bytes at 0x%" PRIX64 " (device)", block->size, block->gpu_addr);
 
     pool_free(&mgr->device_pool, block);
 
@@ -523,7 +524,7 @@ int cb_malloc_managed(CBMemoryManager *mgr, void **ptr, size_t size,
     }
     mgr->alloc_count++;
 
-    MEM_DBG("Allocated %zu bytes managed memory (host=%p, gpu=0x%llX)",
+    MEM_DBG("Allocated %zu bytes managed memory (host=%p, gpu=0x%" PRIX64 ")",
             size, host_ptr, block->gpu_addr);
 
     return CB_SUCCESS;
@@ -701,7 +702,7 @@ CBMemoryBlock* cb_find_block(CBMemoryManager *mgr, void *ptr)
 void cb_memory_pool_dump(CBMemoryPool *pool, const char *name)
 {
     printf("\n=== Memory Pool: %s ===\n", name);
-    printf("Base: 0x%llX, Total: %.2f MB, Used: %.2f MB (%.1f%%)\n",
+    printf("Base: 0x%" PRIX64 ", Total: %.2f MB, Used: %.2f MB (%.1f%%)\n",
            pool->base_addr,
            (double)pool->total_size / (1024 * 1024),
            (double)pool->used_size / (1024 * 1024),
@@ -712,7 +713,7 @@ void cb_memory_pool_dump(CBMemoryPool *pool, const char *name)
     CBMemoryBlock *block = pool->free_list;
     int count = 0;
     while (block && count < 10) {
-        printf("  [%d] 0x%llX - 0x%llX (%.2f MB)\n",
+        printf("  [%d] 0x%" PRIX64 " - 0x%" PRIX64 " (%.2f MB)\n",
                count, block->gpu_addr, block->gpu_addr + block->size,
                (double)block->size / (1024 * 1024));
         block = block->next;
@@ -732,8 +733,8 @@ void cb_memory_manager_stats(CBMemoryManager *mgr)
            (double)mgr->total_allocated / (1024 * 1024));
     printf("Peak allocated: %.2f MB\n",
            (double)mgr->peak_allocated / (1024 * 1024));
-    printf("Allocation count: %llu\n", mgr->alloc_count);
-    printf("Free count: %llu\n", mgr->free_count);
+    printf("Allocation count: %" PRIu64 "\n", mgr->alloc_count);
+    printf("Free count: %" PRIu64 "\n", mgr->free_count);
     printf("Unified memory: %s\n",
            mgr->unified_memory_enabled ? "enabled" : "disabled");
 }

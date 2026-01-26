@@ -10,6 +10,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include "../usb4/usb4_controller.h"
 
 /* PCIe 상수 */

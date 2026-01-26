@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <inttypes.h>
 
 #ifdef __APPLE__
 #include <mach/mach.h>
@@ -88,7 +89,7 @@ void pcie_tunnel_shutdown(PCIeTunnelContext *ctx)
         }
     }
 
-    PCIE_LOG("PCIe tunnel: TX %llu bytes, RX %llu bytes, %llu TLPs",
+    PCIE_LOG("PCIe tunnel: TX %" PRIu64 " bytes, RX %" PRIu64 " bytes, %" PRIu64 " TLPs",
              ctx->bytes_tx, ctx->bytes_rx, ctx->tlp_count);
 
     memset(ctx, 0, sizeof(PCIeTunnelContext));
@@ -112,7 +113,7 @@ static int pcie_send_tlp(PCIeTunnelContext *ctx, PCIeTlpHeader *header,
         ctx->bytes_tx += data_size;
     }
 
-    PCIE_DBG("TLP sent: type=0x%02X addr=0x%llX len=%d",
+    PCIE_DBG("TLP sent: type=0x%02X addr=0x%" PRIX64 " len=%d",
              header->type, header->address, header->length);
 
     return PCIE_SUCCESS;
@@ -348,7 +349,7 @@ int pcie_map_bar(PCIeDevice *device, int bar_index)
         return PCIE_SUCCESS;  /* 이미 매핑됨 */
     }
 
-    PCIE_LOG("Mapping BAR%d: phys=0x%llX size=0x%llX",
+    PCIE_LOG("Mapping BAR%d: phys=0x%" PRIX64 " size=0x%" PRIX64,
              bar_index, bar->physical_base, bar->size);
 
 #ifdef __APPLE__
@@ -429,7 +430,7 @@ uint32_t pcie_mmio_read32(PCIeDevice *device, int bar_index, uint64_t offset)
     /* 시뮬레이션: 가상 메모리에서 읽기 */
     uint32_t value = *(volatile uint32_t*)((uint8_t*)bar->virtual_base + offset);
 
-    PCIE_DBG("MMIO read32 BAR%d+0x%llX = 0x%08X", bar_index, offset, value);
+    PCIE_DBG("MMIO read32 BAR%d+0x%" PRIX64 " = 0x%08X", bar_index, offset, value);
 
     return value;
 }
@@ -450,7 +451,7 @@ void pcie_mmio_write32(PCIeDevice *device, int bar_index,
         return;
     }
 
-    PCIE_DBG("MMIO write32 BAR%d+0x%llX = 0x%08X", bar_index, offset, value);
+    PCIE_DBG("MMIO write32 BAR%d+0x%" PRIX64 " = 0x%08X", bar_index, offset, value);
 
     /* USB4 터널을 통해 실제 MMIO 쓰기 수행 */
     *(volatile uint32_t*)((uint8_t*)bar->virtual_base + offset) = value;
@@ -473,7 +474,7 @@ uint64_t pcie_mmio_read64(PCIeDevice *device, int bar_index, uint64_t offset)
 
     uint64_t value = *(volatile uint64_t*)((uint8_t*)bar->virtual_base + offset);
 
-    PCIE_DBG("MMIO read64 BAR%d+0x%llX = 0x%016llX", bar_index, offset, value);
+    PCIE_DBG("MMIO read64 BAR%d+0x%" PRIX64 " = 0x%016" PRIX64, bar_index, offset, value);
 
     return value;
 }
@@ -494,7 +495,7 @@ void pcie_mmio_write64(PCIeDevice *device, int bar_index,
         return;
     }
 
-    PCIE_DBG("MMIO write64 BAR%d+0x%llX = 0x%016llX", bar_index, offset, value);
+    PCIE_DBG("MMIO write64 BAR%d+0x%" PRIX64 " = 0x%016" PRIX64, bar_index, offset, value);
 
     *(volatile uint64_t*)((uint8_t*)bar->virtual_base + offset) = value;
 }
@@ -509,7 +510,7 @@ int pcie_dma_transfer(PCIeTunnelContext *ctx, PCIeDevice *device,
         return PCIE_ERR_INVALID_PARAM;
     }
 
-    PCIE_LOG("DMA transfer: %s %zu bytes (host=0x%llX <-> device=0x%llX)",
+    PCIE_LOG("DMA transfer: %s %zu bytes (host=0x%" PRIX64 " <-> device=0x%" PRIX64 ")",
              request->is_write ? "H2D" : "D2H",
              request->size, request->host_addr, request->device_addr);
 

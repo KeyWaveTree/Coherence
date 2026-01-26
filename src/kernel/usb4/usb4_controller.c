@@ -8,10 +8,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <inttypes.h>
 
 #ifdef __APPLE__
 #include <IOKit/IOKitLib.h>
 #include <mach/mach.h>
+#include <Availability.h>
+
+/* kIOMasterPortDefault was deprecated in macOS 12.0, use kIOMainPortDefault */
+#if defined(__MAC_OS_X_VERSION_MIN_REQUIRED) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 120000
+#define CB_IO_MAIN_PORT kIOMainPortDefault
+#else
+#define CB_IO_MAIN_PORT kIOMasterPortDefault
+#endif
+
 #endif
 
 /* 내부 에러 코드 */
@@ -71,7 +81,7 @@ int usb4_controller_init(USB4ControllerContext *ctx)
         }
     }
 
-    io_service_t service = IOServiceGetMatchingService(kIOMasterPortDefault, matching);
+    io_service_t service = IOServiceGetMatchingService(CB_IO_MAIN_PORT, matching);
     if (!service) {
         USB4_ERR("USB4/Thunderbolt controller not found");
         return USB4_ERR_NOT_FOUND;
@@ -190,7 +200,7 @@ static int usb4_enumerate_adapters(USB4Router *router)
 
     router->adapter_count = 4;  /* 기본값 */
 
-    USB4_DBG("Enumerated %d adapters on router 0x%llX",
+    USB4_DBG("Enumerated %d adapters on router 0x%" PRIX64,
              router->adapter_count, router->route);
 
     return USB4_SUCCESS;
@@ -218,7 +228,7 @@ int usb4_scan_routers(USB4ControllerContext *ctx)
     }
 
     io_iterator_t iterator;
-    kern_return_t kr = IOServiceGetMatchingServices(kIOMasterPortDefault,
+    kern_return_t kr = IOServiceGetMatchingServices(CB_IO_MAIN_PORT,
                                                     matching,
                                                     &iterator);
     if (kr != KERN_SUCCESS) {
@@ -314,7 +324,7 @@ int usb4_create_pcie_tunnel(USB4ControllerContext *ctx,
         return USB4_ERR_NO_BANDWIDTH;
     }
 
-    USB4_LOG("Creating PCIe tunnel to router 0x%llX...", router->route);
+    USB4_LOG("Creating PCIe tunnel to router 0x%" PRIX64 "...", router->route);
 
     /* 터널 구조체 할당 */
     USB4PCIeTunnel *tunnel = calloc(1, sizeof(USB4PCIeTunnel));
