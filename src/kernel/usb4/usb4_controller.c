@@ -121,10 +121,13 @@ void usb4_controller_shutdown(USB4ControllerContext *ctx)
 
     USB4_LOG("Shutting down USB4 controller...");
 
-    /* 모든 활성 터널 제거 */
-    for (int i = 0; i < ctx->tunnel_count; i++) {
-        if (ctx->active_tunnels[i]) {
-            usb4_destroy_pcie_tunnel(ctx, ctx->active_tunnels[i]);
+    /* 모든 활성 터널 제거 (역순으로 순회하여 배열 수정 충돌 방지) */
+    while (ctx->tunnel_count > 0) {
+        USB4PCIeTunnel *tunnel = ctx->active_tunnels[ctx->tunnel_count - 1];
+        if (tunnel) {
+            usb4_destroy_pcie_tunnel(ctx, tunnel);
+        } else {
+            ctx->tunnel_count--;
         }
     }
 
@@ -132,7 +135,9 @@ void usb4_controller_shutdown(USB4ControllerContext *ctx)
     for (int i = 0; i < ctx->router_count; i++) {
         if (ctx->connected_routers[i]) {
             free(ctx->connected_routers[i]->platform_data);
+            ctx->connected_routers[i]->platform_data = NULL;
             free(ctx->connected_routers[i]);
+            ctx->connected_routers[i] = NULL;
         }
     }
 
@@ -145,7 +150,11 @@ void usb4_controller_shutdown(USB4ControllerContext *ctx)
     }
 #endif
 
-    memset(ctx, 0, sizeof(USB4ControllerContext));
+    /* 보안: 민감 데이터 확실히 제거 (컴파일러 최적화 방지) */
+    volatile uint8_t *p = (volatile uint8_t *)ctx;
+    for (size_t i = 0; i < sizeof(USB4ControllerContext); i++) {
+        p[i] = 0;
+    }
     USB4_LOG("USB4 controller shutdown complete");
 }
 
@@ -267,6 +276,11 @@ int usb4_scan_routers(USB4ControllerContext *ctx)
 
         /* 플랫폼 데이터 저장 */
         io_service_t *platform_data = malloc(sizeof(io_service_t));
+        if (!platform_data) {
+            free(router);
+            IOObjectRelease(device);
+            continue;
+        }
         *platform_data = device;
         router->platform_data = platform_data;
 
@@ -322,6 +336,29 @@ int usb4_create_pcie_tunnel(USB4ControllerContext *ctx,
     if (ctx->tunnel_count >= USB4_MAX_TUNNELS) {
         USB4_ERR("Maximum tunnel count reached");
         return USB4_ERR_NO_BANDWIDTH;
+    }
+
+    /* 보안: 라우터가 등록된 장치인지 검증 (DMA 공격 방지) */
+    bool router_verified = false;
+    for (int i = 0; i < ctx->router_count; i++) {
+        if (ctx->connected_routers[i] == router && router->is_connected) {
+            router_verified = true;
+            break;
+        }
+    }
+    if (!router_verified) {
+        USB4_ERR("Router not verified - rejecting tunnel creation (security)");
+        return USB4_ERR_INVALID_PARAM;
+    }
+
+    /* 보안: 동일 라우터에 대한 중복 터널 방지 */
+    for (int i = 0; i < ctx->tunnel_count; i++) {
+        if (ctx->active_tunnels[i] &&
+            ctx->active_tunnels[i]->downstream &&
+            ctx->active_tunnels[i]->downstream->router == router) {
+            USB4_ERR("Tunnel already exists for this router");
+            return USB4_ERR_TUNNEL_EXISTS;
+        }
     }
 
     USB4_LOG("Creating PCIe tunnel to router 0x%" PRIX64 "...", router->route);
@@ -491,12 +528,17 @@ int usb4_router_write_reg(USB4Router *router, uint32_t offset, uint32_t value)
  */
 int usb4_adapter_read_reg(USB4Adapter *adapter, uint32_t offset, uint32_t *value)
 {
-    if (!adapter || !value) {
+    if (!adapter || !value || !adapter->router) {
+        return USB4_ERR_INVALID_PARAM;
+    }
+
+    /* 오프셋 범위 검증 (오버플로우 방지) */
+    if (offset > 0xFF || adapter->adapter_num > USB4_MAX_ADAPTERS) {
         return USB4_ERR_INVALID_PARAM;
     }
 
     /* 라우터를 통해 접근 */
-    uint32_t addr = (adapter->adapter_num << 8) | offset;
+    uint32_t addr = ((uint32_t)adapter->adapter_num << 8) | offset;
     return usb4_router_read_reg(adapter->router, addr, value);
 }
 
@@ -505,11 +547,16 @@ int usb4_adapter_read_reg(USB4Adapter *adapter, uint32_t offset, uint32_t *value
  */
 int usb4_adapter_write_reg(USB4Adapter *adapter, uint32_t offset, uint32_t value)
 {
-    if (!adapter) {
+    if (!adapter || !adapter->router) {
         return USB4_ERR_INVALID_PARAM;
     }
 
-    uint32_t addr = (adapter->adapter_num << 8) | offset;
+    /* 오프셋 범위 검증 (오버플로우 방지) */
+    if (offset > 0xFF || adapter->adapter_num > USB4_MAX_ADAPTERS) {
+        return USB4_ERR_INVALID_PARAM;
+    }
+
+    uint32_t addr = ((uint32_t)adapter->adapter_num << 8) | offset;
     return usb4_router_write_reg(adapter->router, addr, value);
 }
 

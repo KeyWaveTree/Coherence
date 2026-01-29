@@ -120,8 +120,20 @@ void cb_memory_manager_shutdown(CBMemoryManager *mgr)
     pool_shutdown(&mgr->pinned_pool);
     pool_shutdown(&mgr->managed_pool);
 
-    free(mgr->page_table);
-    memset(mgr, 0, sizeof(CBMemoryManager));
+    /* 보안: 페이지 테이블 민감 데이터 제거 후 해제 */
+    if (mgr->page_table) {
+        volatile uint8_t *pt = (volatile uint8_t *)mgr->page_table;
+        for (size_t i = 0; i < mgr->page_table_size * sizeof(uint64_t); i++) {
+            pt[i] = 0;
+        }
+        free(mgr->page_table);
+    }
+
+    /* 보안: 구조체 민감 데이터 확실히 제거 */
+    volatile uint8_t *p = (volatile uint8_t *)mgr;
+    for (size_t i = 0; i < sizeof(CBMemoryManager); i++) {
+        p[i] = 0;
+    }
 }
 
 /**
@@ -197,8 +209,12 @@ static CBMemoryBlock* create_block(uint64_t addr, size_t size)
  */
 static CBMemoryBlock* pool_alloc(CBMemoryPool *pool, size_t size)
 {
-    /* 페이지 크기로 정렬 */
-    size = ALIGN_UP(size, pool->page_size);
+    /* 페이지 크기로 정렬 (오버플로우 검증) */
+    size_t aligned = ALIGN_UP(size, pool->page_size);
+    if (aligned < size) {
+        return NULL;  /* 오버플로우 */
+    }
+    size = aligned;
 
     /* First Fit 검색 */
     CBMemoryBlock *prev = NULL;
@@ -545,6 +561,11 @@ int cb_free_managed(CBMemoryManager *mgr, void *ptr)
     }
 
     if (block->host_addr) {
+        /* 보안: 통합 메모리 데이터 삭제 후 해제 (데이터 유출 방지) */
+        volatile uint8_t *bp = (volatile uint8_t *)block->host_addr;
+        for (size_t b = 0; b < block->size; b++) {
+            bp[b] = 0;
+        }
         free(block->host_addr);
     }
 
@@ -706,7 +727,7 @@ void cb_memory_pool_dump(CBMemoryPool *pool, const char *name)
            pool->base_addr,
            (double)pool->total_size / (1024 * 1024),
            (double)pool->used_size / (1024 * 1024),
-           100.0 * pool->used_size / pool->total_size);
+           pool->total_size > 0 ? 100.0 * pool->used_size / pool->total_size : 0.0);
     printf("Block count: %d\n", pool->block_count);
 
     printf("\nFree blocks:\n");

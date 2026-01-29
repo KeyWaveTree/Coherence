@@ -178,17 +178,23 @@ void nv_gpu_shutdown(NVGpuContext *ctx)
 
     NV_LOG("Shutting down NVIDIA GPU...");
 
-    /* 모든 채널 제거 */
-    for (uint32_t i = 0; i < ctx->channel_count; i++) {
-        if (ctx->channels[i]) {
-            nv_gpu_destroy_channel(ctx, ctx->channels[i]);
+    /* 모든 채널 제거 (역순으로 순회하여 배열 수정 충돌 방지) */
+    while (ctx->channel_count > 0) {
+        NVChannel *ch = ctx->channels[ctx->channel_count - 1];
+        if (ch) {
+            nv_gpu_destroy_channel(ctx, ch);
+        } else {
+            ctx->channel_count--;
         }
     }
 
-    /* 모든 메모리 할당 해제 */
-    for (uint32_t i = 0; i < ctx->alloc_count; i++) {
-        if (ctx->allocations[i]) {
-            nv_gpu_free_memory(ctx, ctx->allocations[i]);
+    /* 모든 메모리 할당 해제 (역순 순회) */
+    while (ctx->alloc_count > 0) {
+        NVMemoryAlloc *a = ctx->allocations[ctx->alloc_count - 1];
+        if (a) {
+            nv_gpu_free_memory(ctx, a);
+        } else {
+            ctx->alloc_count--;
         }
     }
 
@@ -201,6 +207,11 @@ void nv_gpu_shutdown(NVGpuContext *ctx)
     NV_LOG("GPU statistics: %" PRIu64 " kernel launches, %" PRIu64 " bytes transferred",
            ctx->kernel_launches, ctx->bytes_transferred);
 
+    /* 보안: 민감 데이터 확실히 제거 */
+    volatile uint8_t *p = (volatile uint8_t *)ctx;
+    for (size_t si = 0; si < sizeof(NVGpuContext); si++) {
+        p[si] = 0;
+    }
     ctx->state = NV_GPU_STATE_UNINITIALIZED;
 }
 
@@ -477,6 +488,14 @@ int nv_gpu_alloc_memory(NVGpuContext *ctx, NVMemoryAlloc *alloc)
 
     /* 할당 기록 */
     NVMemoryAlloc *record = malloc(sizeof(NVMemoryAlloc));
+    if (!record) {
+        free(alloc->backing_store);
+        alloc->backing_store = NULL;
+        if (alloc->type == NV_MEM_TYPE_VIDEO) {
+            ctx->vram_free += aligned_size;
+        }
+        return NV_ERR_NO_MEMORY;
+    }
     memcpy(record, alloc, sizeof(NVMemoryAlloc));
     ctx->allocations[ctx->alloc_count++] = record;
 
@@ -503,8 +522,12 @@ void nv_gpu_free_memory(NVGpuContext *ctx, NVMemoryAlloc *alloc)
     for (uint32_t i = 0; i < ctx->alloc_count; i++) {
         if (ctx->allocations[i] &&
             ctx->allocations[i]->gpu_addr == alloc->gpu_addr) {
-            /* backing_store 해제 */
+            /* 보안: backing_store 데이터 삭제 후 해제 (GPU 데이터 유출 방지) */
             if (ctx->allocations[i]->backing_store) {
+                volatile uint8_t *bp = (volatile uint8_t *)ctx->allocations[i]->backing_store;
+                for (uint64_t b = 0; b < ctx->allocations[i]->size; b++) {
+                    bp[b] = 0;
+                }
                 free(ctx->allocations[i]->backing_store);
             }
             free(ctx->allocations[i]);
@@ -628,13 +651,20 @@ int nv_gpu_launch_kernel(NVGpuContext *ctx, NVKernelParams *params)
            params->block_dim[0], params->block_dim[1], params->block_dim[2],
            params->shared_mem);
 
-    /* 커널 실행 검증 */
-    uint32_t threads_per_block = params->block_dim[0] *
-                                 params->block_dim[1] *
-                                 params->block_dim[2];
+    /* 보안: 커널 실행 파라미터 검증 (오버플로우 방지) */
+    if (params->block_dim[0] == 0 || params->block_dim[1] == 0 || params->block_dim[2] == 0 ||
+        params->grid_dim[0] == 0 || params->grid_dim[1] == 0 || params->grid_dim[2] == 0) {
+        NV_ERR_LOG("Invalid kernel dimensions (zero value)");
+        return NV_ERR_INVALID_PARAM;
+    }
 
-    if (threads_per_block > ctx->info.max_threads_per_block) {
-        NV_ERR_LOG("Too many threads per block: %d (max %d)",
+    /* 정수 오버플로우 안전 검증 */
+    uint64_t threads_per_block = (uint64_t)params->block_dim[0] *
+                                 (uint64_t)params->block_dim[1] *
+                                 (uint64_t)params->block_dim[2];
+
+    if (threads_per_block > (uint64_t)ctx->info.max_threads_per_block) {
+        NV_ERR_LOG("Too many threads per block: %" PRIu64 " (max %d)",
                    threads_per_block, ctx->info.max_threads_per_block);
         return NV_ERR_INVALID_PARAM;
     }

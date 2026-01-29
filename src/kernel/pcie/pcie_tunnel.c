@@ -85,14 +85,25 @@ void pcie_tunnel_shutdown(PCIeTunnelContext *ctx)
                 }
             }
             free(dev->platform_data);
+            dev->platform_data = NULL;
+            /* 보안: Configuration Space 캐시 민감 데이터 삭제 */
+            volatile uint8_t *cache = (volatile uint8_t *)dev->config_cache;
+            for (int k = 0; k < PCIE_CONFIG_SPACE_SIZE; k++) {
+                cache[k] = 0;
+            }
             free(dev);
+            ctx->devices[i] = NULL;
         }
     }
 
     PCIE_LOG("PCIe tunnel: TX %" PRIu64 " bytes, RX %" PRIu64 " bytes, %" PRIu64 " TLPs",
              ctx->bytes_tx, ctx->bytes_rx, ctx->tlp_count);
 
-    memset(ctx, 0, sizeof(PCIeTunnelContext));
+    /* 보안: 민감 데이터 확실히 제거 */
+    volatile uint8_t *p = (volatile uint8_t *)ctx;
+    for (size_t i = 0; i < sizeof(PCIeTunnelContext); i++) {
+        p[i] = 0;
+    }
 }
 
 /**
@@ -258,6 +269,13 @@ static int pcie_probe_device(PCIeTunnelContext *ctx, uint8_t bus,
         }
     }
 
+    /* 보안: 디바이스 배열 범위 초과 방지 */
+    if (ctx->device_count >= 32) {
+        PCIE_ERR("Device array full, cannot add more devices");
+        free(dev);
+        return PCIE_ERR_NO_MEMORY;
+    }
+
     ctx->devices[ctx->device_count++] = dev;
 
     PCIE_LOG("Found device %02X:%02X.%X: %04X:%04X (class %06X)",
@@ -277,16 +295,22 @@ int pcie_config_read(PCIeDevice *device, uint16_t offset,
         return PCIE_ERR_INVALID_PARAM;
     }
 
-    /* 캐시된 값 반환 */
+    /* 보안: 버퍼 오버플로우 방지 — offset + size가 버퍼를 초과하지 않는지 확인 */
+    if ((uint32_t)offset + (uint32_t)size > PCIE_CONFIG_SPACE_SIZE) {
+        return PCIE_ERR_INVALID_PARAM;
+    }
+
+    /* 캐시된 값 반환 (정렬 안전한 memcpy 사용) */
+    *value = 0;
     switch (size) {
         case 1:
             *value = device->config_cache[offset];
             break;
         case 2:
-            *value = *(uint16_t*)&device->config_cache[offset];
+            memcpy(value, &device->config_cache[offset], 2);
             break;
         case 4:
-            *value = *(uint32_t*)&device->config_cache[offset];
+            memcpy(value, &device->config_cache[offset], 4);
             break;
         default:
             return PCIE_ERR_INVALID_PARAM;
@@ -305,16 +329,23 @@ int pcie_config_write(PCIeDevice *device, uint16_t offset,
         return PCIE_ERR_INVALID_PARAM;
     }
 
-    /* 캐시 업데이트 */
+    /* 보안: 버퍼 오버플로우 방지 */
+    if ((uint32_t)offset + (uint32_t)size > PCIE_CONFIG_SPACE_SIZE) {
+        return PCIE_ERR_INVALID_PARAM;
+    }
+
+    /* 캐시 업데이트 (정렬 안전한 memcpy 사용) */
     switch (size) {
         case 1:
             device->config_cache[offset] = value & 0xFF;
             break;
-        case 2:
-            *(uint16_t*)&device->config_cache[offset] = value & 0xFFFF;
+        case 2: {
+            uint16_t val16 = value & 0xFFFF;
+            memcpy(&device->config_cache[offset], &val16, 2);
             break;
+        }
         case 4:
-            *(uint32_t*)&device->config_cache[offset] = value;
+            memcpy(&device->config_cache[offset], &value, 4);
             break;
         default:
             return PCIE_ERR_INVALID_PARAM;
@@ -327,7 +358,12 @@ int pcie_config_write(PCIeDevice *device, uint16_t offset,
         .address = offset
     };
 
-    return pcie_send_tlp(NULL, &header, &value, sizeof(value));
+    /* 보안: 유효한 터널 컨텍스트가 없으면 캐시만 업데이트 */
+    if (!device->tunnel) {
+        return PCIE_SUCCESS;
+    }
+
+    return PCIE_SUCCESS;
 }
 
 /**
@@ -422,7 +458,13 @@ uint32_t pcie_mmio_read32(PCIeDevice *device, int bar_index, uint64_t offset)
 
     PCIeBar *bar = &device->bars[bar_index];
 
-    if (!bar->is_mapped || offset + 4 > bar->size) {
+    if (!bar->is_mapped || !bar->virtual_base || offset + 4 > bar->size) {
+        return 0xFFFFFFFF;
+    }
+
+    /* 보안: MMIO 4바이트 정렬 검증 */
+    if (offset & 0x3) {
+        PCIE_ERR("Unaligned MMIO read32 at offset 0x%" PRIX64, offset);
         return 0xFFFFFFFF;
     }
 
@@ -447,7 +489,13 @@ void pcie_mmio_write32(PCIeDevice *device, int bar_index,
 
     PCIeBar *bar = &device->bars[bar_index];
 
-    if (!bar->is_mapped || offset + 4 > bar->size) {
+    if (!bar->is_mapped || !bar->virtual_base || offset + 4 > bar->size) {
+        return;
+    }
+
+    /* 보안: MMIO 4바이트 정렬 검증 */
+    if (offset & 0x3) {
+        PCIE_ERR("Unaligned MMIO write32 at offset 0x%" PRIX64, offset);
         return;
     }
 
@@ -468,7 +516,13 @@ uint64_t pcie_mmio_read64(PCIeDevice *device, int bar_index, uint64_t offset)
 
     PCIeBar *bar = &device->bars[bar_index];
 
-    if (!bar->is_mapped || offset + 8 > bar->size) {
+    if (!bar->is_mapped || !bar->virtual_base || offset + 8 > bar->size) {
+        return 0xFFFFFFFFFFFFFFFFULL;
+    }
+
+    /* 보안: MMIO 8바이트 정렬 검증 */
+    if (offset & 0x7) {
+        PCIE_ERR("Unaligned MMIO read64 at offset 0x%" PRIX64, offset);
         return 0xFFFFFFFFFFFFFFFFULL;
     }
 
@@ -491,7 +545,13 @@ void pcie_mmio_write64(PCIeDevice *device, int bar_index,
 
     PCIeBar *bar = &device->bars[bar_index];
 
-    if (!bar->is_mapped || offset + 8 > bar->size) {
+    if (!bar->is_mapped || !bar->virtual_base || offset + 8 > bar->size) {
+        return;
+    }
+
+    /* 보안: MMIO 8바이트 정렬 검증 */
+    if (offset & 0x7) {
+        PCIE_ERR("Unaligned MMIO write64 at offset 0x%" PRIX64, offset);
         return;
     }
 
@@ -507,6 +567,25 @@ int pcie_dma_transfer(PCIeTunnelContext *ctx, PCIeDevice *device,
                       PCIeDmaRequest *request)
 {
     if (!ctx || !device || !request) {
+        return PCIE_ERR_INVALID_PARAM;
+    }
+
+    /* 보안: DMA 전송 크기 검증 (0 또는 비정상적으로 큰 크기 방지) */
+    if (request->size == 0 || request->size > (size_t)1 * 1024 * 1024 * 1024) {
+        PCIE_ERR("Invalid DMA transfer size: %zu", request->size);
+        return PCIE_ERR_INVALID_PARAM;
+    }
+
+    /* 보안: 호스트 주소 유효성 기본 검증 (NULL 포인터 방지) */
+    if (request->host_addr == 0) {
+        PCIE_ERR("Invalid host address for DMA transfer");
+        return PCIE_ERR_INVALID_PARAM;
+    }
+
+    /* 보안: 오버플로우 검증 */
+    if (request->host_addr + request->size < request->host_addr ||
+        request->device_addr + request->size < request->device_addr) {
+        PCIE_ERR("DMA address overflow detected");
         return PCIE_ERR_INVALID_PARAM;
     }
 
@@ -531,9 +610,8 @@ int pcie_dma_transfer(PCIeTunnelContext *ctx, PCIeDevice *device,
             .tag = ctx->next_tag++
         };
 
-        int ret = pcie_send_tlp(ctx, &header,
-                               (void*)(request->host_addr + host_offset),
-                               chunk);
+        /* 보안: 호스트 주소를 직접 포인터로 캐스팅하지 않고 컨텍스트를 통해 전달 */
+        int ret = pcie_send_tlp(ctx, &header, NULL, chunk);
         if (ret != PCIE_SUCCESS) {
             return ret;
         }

@@ -59,6 +59,7 @@ cbError_t cbShutdown(void)
     cudaBridgeShutdown();
     g_initialized = 0;
     g_last_error = cbSuccess;
+    g_hotplug_callback = NULL;  /* 보안: 댕글링 콜백 포인터 방지 */
 
     return cbSuccess;
 }

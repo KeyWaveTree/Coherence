@@ -217,6 +217,12 @@ cudaError_t cudaBridgeShutdown(void)
     pthread_mutex_unlock(&g_state.lock);
     pthread_mutex_destroy(&g_state.lock);
 
+    /* 보안: 전역 상태 민감 데이터 제거 */
+    volatile uint8_t *p = (volatile uint8_t *)&g_state;
+    for (size_t i = 0; i < sizeof(CudaBridgeState); i++) {
+        p[i] = 0;
+    }
+
     CUDA_LOG("CudaBridge shutdown complete");
 
     return cudaSuccess;
@@ -604,6 +610,12 @@ cudaError_t cudaMemset(void *devPtr, int value, size_t count)
         return cudaErrorInvalidValue;
     }
 
+    /* 보안: 과도한 메모리 할당 방지 (최대 1GB) */
+    if (count > (size_t)1 * 1024 * 1024 * 1024) {
+        set_error(cudaErrorInvalidValue);
+        return cudaErrorInvalidValue;
+    }
+
     /* 임시 버퍼로 memset 후 복사 */
     void *tmp = malloc(count);
     if (!tmp) {
@@ -796,6 +808,13 @@ cudaError_t cudaStreamDestroy(cudaStream_t stream)
         return cudaSuccess;
     }
 
+    /* 보안: 디바이스 인덱스 범위 검증 */
+    if (stream->device < 0 || stream->device >= g_state.gpu_count) {
+        free(stream);
+        set_error(cudaErrorInvalidDevice);
+        return cudaErrorInvalidDevice;
+    }
+
     NVGpuContext *gpu = g_state.gpu_contexts[stream->device];
     if (gpu && stream->channel) {
         nv_gpu_destroy_channel(gpu, stream->channel);
@@ -814,6 +833,12 @@ cudaError_t cudaStreamSynchronize(cudaStream_t stream)
 {
     if (!stream) {
         return cudaDeviceSynchronize();
+    }
+
+    /* 보안: 디바이스 인덱스 범위 검증 */
+    if (stream->device < 0 || stream->device >= g_state.gpu_count) {
+        set_error(cudaErrorInvalidDevice);
+        return cudaErrorInvalidDevice;
     }
 
     NVGpuContext *gpu = g_state.gpu_contexts[stream->device];
@@ -947,6 +972,11 @@ cudaError_t cudaEventElapsedTime(float *ms, cudaEvent_t start, cudaEvent_t end)
         return cudaErrorInvalidResourceHandle;
     }
 
+    /* 보안: 타임스탬프 역전 검증 */
+    if (end->timestamp < start->timestamp) {
+        *ms = 0.0f;
+        return cudaSuccess;
+    }
     uint64_t diff = end->timestamp - start->timestamp;
     *ms = (float)diff / 1000000.0f;  /* ns to ms */
 
