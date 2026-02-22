@@ -1,4 +1,4 @@
-# CudaBridge
+# Coherence
 
 Apple Silicon Mac에서 외부 NVIDIA eGPU를 통해 CUDA 연산을 가능하게 하는 오픈소스 프로젝트
 
