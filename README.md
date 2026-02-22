@@ -1,6 +1,6 @@
 # Coherence
 
-**[English](docs/i18n/README_EN.md)** | **[日本語](docs/i18n/README_JA.md)** | **[中文](docs/i18n/README_ZH.md)** | **한국어**
+**한국어** | **[English](docs/README_OtherLanguage/README_EN.md)** | **[日本語](docs/README_OtherLanguage/README_JA.md)** | **[中文](docs/README_OtherLanguage/README_ZH.md)** 
 
 Apple Silicon Mac에서 외부 NVIDIA eGPU를 통해 CUDA 연산을 가능하게 하는 오픈소스 프로젝트
 
