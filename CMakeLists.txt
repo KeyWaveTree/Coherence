@@ -5,6 +5,9 @@
 cmake_minimum_required(VERSION 3.20)
 project(CudaBridge VERSION 1.0.0 LANGUAGES C CXX)
 
+# 설치 경로 변수 설정
+include(GNUInstallDirs)
+
 # C/C++ 표준
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -237,9 +240,6 @@ if(BUILD_EXAMPLES)
     add_executable(example_bandwidth src/userspace/examples/bandwidth_test.c)
     target_link_libraries(example_bandwidth cudabridge)
 endif()
-
-# 설치 규칙
-include(GNUInstallDirs)
 
 install(TARGETS cudabridge cudabridge_static
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
