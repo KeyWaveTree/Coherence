@@ -1,8 +1,8 @@
-# CudaBridge Architecture
+# Coherence Architecture
 
 ## 개요
 
-CudaBridge는 Apple Silicon Mac에서 USB4/Thunderbolt를 통해 연결된 NVIDIA eGPU에서
+Coherence는 Apple Silicon Mac에서 USB4/Thunderbolt를 통해 연결된 NVIDIA eGPU에서
 CUDA 연산을 수행할 수 있게 해주는 소프트웨어 스택입니다.
 
 ## 레이어 구조
@@ -15,7 +15,7 @@ CUDA 연산을 수행할 수 있게 해주는 소프트웨어 스택입니다.
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                  CudaBridge Public API                          │
+│                  Coherence Public API                           │
 │                    (cudabridge.h)                               │
 │   - cbMalloc, cbMemcpy, cbLaunchKernel 등                       │
 │   - CUDA 호환 모드 지원                                          │

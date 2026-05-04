@@ -343,7 +343,7 @@ cudaError_t cudaGetDeviceProperties(cudaDeviceProp *prop, int device)
     memset(prop, 0, sizeof(cudaDeviceProp));
 
     /* GPU 정보 복사 */
-    strncpy(prop->name, gpu->info.name, sizeof(prop->name) - 1);
+    snprintf(prop->name, sizeof(prop->name), "%s", gpu->info.name);
     prop->totalGlobalMem = gpu->info.vram_size;
     prop->sharedMemPerBlock = gpu->info.sm_info.shared_mem_per_sm / 2;
     prop->regsPerBlock = gpu->info.sm_info.registers_per_sm;

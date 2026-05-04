@@ -477,9 +477,9 @@ int cb_free_host(CBMemoryManager *mgr, void *ptr)
     }
 
     CBMemoryBlock *block = cb_find_block(mgr, ptr);
-    size_t size = block ? block->size : 0;
 
 #ifdef __APPLE__
+    size_t size = block ? block->size : 0;
     if (size > 0) {
         mach_vm_deallocate(mach_task_self(), (mach_vm_address_t)ptr, size);
     }
@@ -629,6 +629,8 @@ int cb_mem_prefetch(CBMemoryManager *mgr, void *ptr, size_t size,
     }
 
     MEM_DBG("Prefetch %zu bytes from %p to device %d", size, ptr, dst_device);
+    (void)size;
+    (void)dst_device;
 
     /* 실제로는 비동기 DMA 전송 시작 */
 

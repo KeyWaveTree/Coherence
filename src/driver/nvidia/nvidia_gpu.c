@@ -257,7 +257,6 @@ int nv_gpu_query_info(NVGpuContext *ctx)
 
     /* Boot 레지스터에서 칩 ID 읽기 */
     uint32_t boot0 = nv_gpu_read_reg(ctx, NV_PMC_BOOT_0);
-    uint32_t boot1 = nv_gpu_read_reg(ctx, NV_PMC_BOOT_1);
 
     info->chip_id = (boot0 >> 20) & 0x1FF;
     info->revision = boot0 & 0xFF;

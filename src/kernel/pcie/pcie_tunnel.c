@@ -40,11 +40,8 @@
 /* 내부 함수 선언 */
 static int pcie_send_tlp(PCIeTunnelContext *ctx, PCIeTlpHeader *header,
                          void *data, size_t data_size);
-static int pcie_receive_tlp(PCIeTunnelContext *ctx, PCIeTlpHeader *header,
-                            void *data, size_t *data_size);
 static int pcie_probe_device(PCIeTunnelContext *ctx, uint8_t bus,
                              uint8_t device, uint8_t function);
-static uint64_t pcie_decode_bar_size(uint32_t bar_value);
 
 /**
  * PCIe 터널 컨텍스트 초기화
@@ -131,26 +128,6 @@ static int pcie_send_tlp(PCIeTunnelContext *ctx, PCIeTlpHeader *header,
 }
 
 /**
- * TLP 수신
- */
-static int pcie_receive_tlp(PCIeTunnelContext *ctx, PCIeTlpHeader *header,
-                            void *data, size_t *data_size)
-{
-    if (!ctx || !header) {
-        return PCIE_ERR_INVALID_PARAM;
-    }
-
-    /* USB4 터널에서 TLP 수신 */
-    /* 실제 구현에서는 USB4 프로토콜에서 디캡슐화 */
-
-    if (data && data_size) {
-        ctx->bytes_rx += *data_size;
-    }
-
-    return PCIE_SUCCESS;
-}
-
-/**
  * PCIe 버스 스캔
  */
 int pcie_scan_bus(PCIeTunnelContext *ctx)
@@ -196,19 +173,7 @@ int pcie_scan_bus(PCIeTunnelContext *ctx)
 static int pcie_probe_device(PCIeTunnelContext *ctx, uint8_t bus,
                              uint8_t device, uint8_t function)
 {
-    /* Configuration Space 읽기를 위한 TLP 생성 */
-    PCIeTlpHeader header = {
-        .type = PCIE_TLP_TYPE_CFG_READ_0,
-        .tc = 0,
-        .attr = 0,
-        .length = 1,
-        .requester_id = 0,
-        .tag = ctx->next_tag++,
-        .first_be = 0x0F,
-        .last_be = 0x00,
-        .address = 0
-    };
-
+    /* Configuration Space 읽기 (실제 구현에서는 TLP를 생성/전송하여 vendor_device 응답을 수신) */
     uint32_t vendor_device = 0;
 
     /* 시뮬레이션: USB4 터널이 있으면 NVIDIA GPU 가정 */
@@ -351,12 +316,7 @@ int pcie_config_write(PCIeDevice *device, uint16_t offset,
             return PCIE_ERR_INVALID_PARAM;
     }
 
-    /* TLP를 통해 실제 디바이스에 쓰기 */
-    PCIeTlpHeader header = {
-        .type = PCIE_TLP_TYPE_CFG_WRITE_0,
-        .length = 1,
-        .address = offset
-    };
+    /* TLP를 통해 실제 디바이스에 쓰기 (실제 구현에서는 PCIE_TLP_TYPE_CFG_WRITE_0 TLP 전송) */
 
     /* 보안: 유효한 터널 컨텍스트가 없으면 캐시만 업데이트 */
     if (!device->tunnel) {

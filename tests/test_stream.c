@@ -235,7 +235,6 @@ void test_stream_event_combo(void)
 {
     cbStream_t stream1, stream2;
     cbEvent_t event;
-    cbError_t err;
 
     cbStreamCreate(&stream1);
     cbStreamCreate(&stream2);

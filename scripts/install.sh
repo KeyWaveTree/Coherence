@@ -133,7 +133,7 @@ if [ "$OS" = "Linux" ]; then
     if [ -f /etc/ld.so.conf ]; then
         if ! grep -q "$PREFIX/lib" /etc/ld.so.conf.d/*.conf 2>/dev/null; then
             log "Updating library cache..."
-            echo "$PREFIX/lib" | sudo tee /etc/ld.so.conf.d/cudabridge.conf > /dev/null
+            echo "$PREFIX/lib" | sudo tee /etc/ld.so.conf.d/coherence.conf > /dev/null
             sudo ldconfig
         fi
     fi

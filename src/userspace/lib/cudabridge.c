@@ -151,7 +151,7 @@ cbError_t cbGetDeviceProperties(cbDeviceProp *prop, int device)
 
     /* 구조체 복사 */
     memset(prop, 0, sizeof(cbDeviceProp));
-    strncpy(prop->name, cuda_prop.name, sizeof(prop->name) - 1);
+    snprintf(prop->name, sizeof(prop->name), "%s", cuda_prop.name);
     prop->totalGlobalMem = cuda_prop.totalGlobalMem;
     prop->sharedMemPerBlock = cuda_prop.sharedMemPerBlock;
     prop->regsPerBlock = cuda_prop.regsPerBlock;

@@ -493,6 +493,8 @@ int usb4_router_read_reg(USB4Router *router, uint32_t offset, uint32_t *value)
         return USB4_ERR_INVALID_PARAM;
     }
 
+    (void)offset;
+
 #ifdef __APPLE__
     if (router->platform_data) {
         /* IOKit을 통한 레지스터 읽기 구현 */
@@ -513,6 +515,9 @@ int usb4_router_write_reg(USB4Router *router, uint32_t offset, uint32_t value)
     if (!router) {
         return USB4_ERR_INVALID_PARAM;
     }
+
+    (void)offset;
+    (void)value;
 
 #ifdef __APPLE__
     if (router->platform_data) {

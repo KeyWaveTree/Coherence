@@ -70,7 +70,7 @@ static int open_log_file(void) {
     struct tm *tm = localtime(&now);
 
     snprintf(g_log.log_file_path, sizeof(g_log.log_file_path),
-             "%s/cudabridge_%04d%02d%02d_%02d%02d%02d.log",
+             "%s/coherence_%04d%02d%02d_%02d%02d%02d.log",
              g_log.config.log_dir,
              tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday,
              tm->tm_hour, tm->tm_min, tm->tm_sec);
