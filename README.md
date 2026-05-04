@@ -1,8 +1,8 @@
 # Coherence
 
-**[English](docs/README_OtherLanguage/README_EN.md)** | **[日本語](docs/README_OtherLanguage/README_JA.md)** | **[中文](docs/README_OtherLanguage/README_ZH.md)** | **한국어**
+**한국어** | **[English](docs/README_OtherLanguage/README_EN.md)** | **[日本語](docs/README_OtherLanguage/README_JA.md)** | **[中文](docs/README_OtherLanguage/README_ZH.md)**
 
-Apple Silicon Mac에서 외부 NVIDIA eGPU를 통해 CUDA 연산을 가능하게 하는 오픈소스 프로젝트
+Apple Silicon Mac에서 외부 NVIDIA eGPU 호환 드라이버 및 딥러닝 및 GPU 자원 사용을 가능하게 하는 오픈소스 프로젝트(CUDA 연산)
 
 ## 개요
 
@@ -575,7 +575,7 @@ Coherence/
 
 기여를 환영합니다! Pull Request를 보내기 전에 이슈를 먼저 생성해 주세요.
 
-## 감사 및 출처 표기 권장 (Attribution Recommendation)
+## 출처 표기 권장 (Attribution Recommendation)
 
 이 프로젝트는 누구나 자유롭게 활용하고 기여할 수 있도록 MIT 라이선스로 공개되었습니다.
 법적인 강제 사항은 아니지만, 오픈소스 생태계의 선순환과 창작자의 동기부여를 위해
@@ -583,9 +583,9 @@ Coherence/
 
 > "이 프로젝트를 활용해서 멋진 결과물을 만드셨다면, 출처를 남겨주세요. 제게 큰 성취감과 동기부여가 됩니다!"
 
-- **출처 표기 및 감사 인사**: 기업이나 개인 프로젝트에서 이 코드를 활용해 제품 및 서비스를
+- **출처 표기**: 기업이나 개인 프로젝트에서 이 코드를 활용해 제품 및 서비스를
   만드셨다면, 제품 소개 페이지, 블로그, 발표 자료, 또는 소스코드 주석 등에 짧막하게라도
-  원작자(Coherence Contributors)와 프로젝트 이름을 기반으로 만들었다는 감사 인사나
+  원작자(Coherence Contributors)와 프로젝트 이름을 기반으로 만들었다는
   소개를 남겨주시면 감사하겠습니다.
 
 - **프로젝트 재구성(Fork) 시**: 만약 이 프로젝트를 기반으로 재구성(Fork)하거나 발전시켜
