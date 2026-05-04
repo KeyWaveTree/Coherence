@@ -1,5 +1,5 @@
 /**
- * CudaBridge CLI - GPU Driver Control Interface Implementation
+ * Coherence CLI - GPU Driver Control Interface Implementation
  *
  * nvidia-smi 스타일의 GPU 제어/모니터링 CLI 도구.
  */
@@ -42,18 +42,18 @@ static int g_use_color = 1;
 /* ========== 명령 테이블 ========== */
 
 static CLICommand commands[] = {
-    {"info",       "i",  "GPU 디바이스 정보 표시",              "cudabridge-cli info [-d <device>] [--json]", cmd_info},
-    {"status",     "s",  "eGPU 연결 상태 표시",                "cudabridge-cli status [--json]",              cmd_status},
-    {"connect",    "c",  "eGPU 연결",                          "cudabridge-cli connect [-d <device>]",        cmd_connect},
-    {"disconnect", "dc", "eGPU 안전 해제",                     "cudabridge-cli disconnect [--force]",         cmd_disconnect},
-    {"monitor",    "m",  "실시간 GPU 모니터링",                 "cudabridge-cli monitor [-i <interval_ms>]",   cmd_monitor},
-    {"config",     "cf", "GPU 설정 관리",                      "cudabridge-cli config <subcommand>",          cmd_config},
-    {"diag",       "d",  "시스템 진단 실행",                    "cudabridge-cli diag",                         cmd_diag},
-    {"log",        "l",  "드라이버 로그 조회",                  "cudabridge-cli log [-n <lines>] [--level <level>]", cmd_log},
-    {"benchmark",  "b",  "성능 벤치마크 실행",                  "cudabridge-cli benchmark",                    cmd_benchmark},
-    {"reset",      "r",  "GPU 리셋",                           "cudabridge-cli reset [--hard]",               cmd_reset},
-    {"help",       "h",  "도움말 표시",                        "cudabridge-cli help [command]",                cmd_help},
-    {"version",    "v",  "버전 정보 표시",                     "cudabridge-cli version",                      cmd_version},
+    {"info",       "i",  "GPU 디바이스 정보 표시",              "coherence-cli info [-d <device>] [--json]", cmd_info},
+    {"status",     "s",  "eGPU 연결 상태 표시",                "coherence-cli status [--json]",              cmd_status},
+    {"connect",    "c",  "eGPU 연결",                          "coherence-cli connect [-d <device>]",        cmd_connect},
+    {"disconnect", "dc", "eGPU 안전 해제",                     "coherence-cli disconnect [--force]",         cmd_disconnect},
+    {"monitor",    "m",  "실시간 GPU 모니터링",                 "coherence-cli monitor [-i <interval_ms>]",   cmd_monitor},
+    {"config",     "cf", "GPU 설정 관리",                      "coherence-cli config <subcommand>",          cmd_config},
+    {"diag",       "d",  "시스템 진단 실행",                    "coherence-cli diag",                         cmd_diag},
+    {"log",        "l",  "드라이버 로그 조회",                  "coherence-cli log [-n <lines>] [--level <level>]", cmd_log},
+    {"benchmark",  "b",  "성능 벤치마크 실행",                  "coherence-cli benchmark",                    cmd_benchmark},
+    {"reset",      "r",  "GPU 리셋",                           "coherence-cli reset [--hard]",               cmd_reset},
+    {"help",       "h",  "도움말 표시",                        "coherence-cli help [command]",                cmd_help},
+    {"version",    "v",  "버전 정보 표시",                     "coherence-cli version",                      cmd_version},
     {NULL, NULL, NULL, NULL, NULL}
 };
 
@@ -62,7 +62,7 @@ static CLICommand commands[] = {
 void cli_print_banner(void) {
     printf("%s", C_CYAN);
     printf("╔═══════════════════════════════════════════════════════════════╗\n");
-    printf("║           CudaBridge GPU Driver CLI v1.0.0                  ║\n");
+    printf("║           Coherence GPU Driver CLI v1.0.0                  ║\n");
     printf("║     Apple Silicon eGPU Management & Control Tool            ║\n");
     printf("╚═══════════════════════════════════════════════════════════════╝\n");
     printf("%s", C_RESET);
@@ -177,7 +177,7 @@ int cmd_info(int argc, char *argv[], CLIOptions *opts) {
 
     printf("  %-24s %s%s%s\n", "Driver Version:", C_BOLD, "1.0.0", C_RESET);
     printf("  %-24s %s%s%s\n", "CUDA Version:", C_BOLD, "12.0 (Bridge)", C_RESET);
-    printf("  %-24s %s%s%s\n", "Platform:", C_BOLD, "CudaBridge for Apple Silicon", C_RESET);
+    printf("  %-24s %s%s%s\n", "Platform:", C_BOLD, "Coherence for Apple Silicon", C_RESET);
     printf("\n");
 
     if (has_device) {
@@ -212,7 +212,7 @@ int cmd_info(int argc, char *argv[], CLIOptions *opts) {
         printf("  %-24s %d MHz\n", "Memory Clock:", 1313);
     } else {
         printf("  %sNo eGPU device detected%s\n", C_DIM, C_RESET);
-        printf("  Connect an eGPU via Thunderbolt/USB4 and run: cudabridge-cli connect\n");
+        printf("  Connect an eGPU via Thunderbolt/USB4 and run: coherence-cli connect\n");
     }
 
     printf("\n");
@@ -304,7 +304,7 @@ int cmd_connect(int argc, char *argv[], CLIOptions *opts) {
                C_RED, egpu_error_string(err), C_RESET);
 
         if (err == EGPU_ERR_INCOMPATIBLE_DEVICE) {
-            printf("\n  %sNote:%s The device is not compatible with CudaBridge.\n",
+            printf("\n  %sNote:%s The device is not compatible with Coherence.\n",
                    C_YELLOW, C_RESET);
             printf("  Only NVIDIA GPUs (Kepler or newer) are supported.\n");
             printf("  The device has been forcefully disconnected for safety.\n");
@@ -352,7 +352,7 @@ int cmd_monitor(int argc, char *argv[], CLIOptions *opts) {
 
     EGPUConnectionState state = egpu_get_state();
     if (state != EGPU_STATE_CONNECTED && state != EGPU_STATE_DEGRADED) {
-        printf("\n  %sNo eGPU connected. Connect first: cudabridge-cli connect%s\n\n",
+        printf("\n  %sNo eGPU connected. Connect first: coherence-cli connect%s\n\n",
                C_DIM, C_RESET);
         return CLI_ERR_DEVICE;
     }
@@ -444,14 +444,14 @@ int cmd_config(int argc, char *argv[], CLIOptions *opts) {
         printf("\n");
     } else if (strcmp(subcmd, "set") == 0) {
         if (argc < 3) {
-            printf("  Usage: cudabridge-cli config set <key> <value>\n");
+            printf("  Usage: coherence-cli config set <key> <value>\n");
             return CLI_ERR_ARGS;
         }
         printf("  %s✓ Set %s = %s%s\n", C_GREEN, argv[1], argv[2], C_RESET);
         printf("  (Note: Configuration changes are simulated in this version)\n\n");
     } else if (strcmp(subcmd, "clock") == 0) {
         if (argc < 3) {
-            printf("  Usage: cudabridge-cli config clock <gpu_mhz> <mem_mhz>\n");
+            printf("  Usage: coherence-cli config clock <gpu_mhz> <mem_mhz>\n");
             return CLI_ERR_ARGS;
         }
         int gpu_mhz = atoi(argv[1]);
@@ -460,7 +460,7 @@ int cmd_config(int argc, char *argv[], CLIOptions *opts) {
         printf("  %s✓ Clock speeds updated (simulated)%s\n\n", C_GREEN, C_RESET);
     } else if (strcmp(subcmd, "power") == 0) {
         if (argc < 2) {
-            printf("  Usage: cudabridge-cli config power <limit_watts>\n");
+            printf("  Usage: coherence-cli config power <limit_watts>\n");
             return CLI_ERR_ARGS;
         }
         int watts = atoi(argv[1]);
@@ -468,7 +468,7 @@ int cmd_config(int argc, char *argv[], CLIOptions *opts) {
         printf("  %s✓ Power limit updated (simulated)%s\n\n", C_GREEN, C_RESET);
     } else if (strcmp(subcmd, "fan") == 0) {
         if (argc < 2) {
-            printf("  Usage: cudabridge-cli config fan <speed_percent|auto>\n");
+            printf("  Usage: coherence-cli config fan <speed_percent|auto>\n");
             return CLI_ERR_ARGS;
         }
         if (strcmp(argv[1], "auto") == 0) {
@@ -479,7 +479,7 @@ int cmd_config(int argc, char *argv[], CLIOptions *opts) {
         printf("  %s✓ Fan speed updated (simulated)%s\n\n", C_GREEN, C_RESET);
     } else if (strcmp(subcmd, "pstate") == 0) {
         if (argc < 2) {
-            printf("  Usage: cudabridge-cli config pstate <P0-P12>\n");
+            printf("  Usage: coherence-cli config pstate <P0-P12>\n");
             return CLI_ERR_ARGS;
         }
         printf("  Performance state set to: %s\n", argv[1]);
@@ -509,7 +509,7 @@ int cmd_diag(int argc, char *argv[], CLIOptions *opts) {
 
     /* 드라이버 상태 */
     printf("  [2/6] Driver Status\n");
-    printf("        %s✓%s CudaBridge driver v1.0.0 loaded\n", C_GREEN, C_RESET);
+    printf("        %s✓%s Coherence driver v1.0.0 loaded\n", C_GREEN, C_RESET);
     printf("        %s✓%s Logging system active\n", C_GREEN, C_RESET);
 
     /* eGPU 연결 */
@@ -571,14 +571,14 @@ int cmd_log(int argc, char *argv[], CLIOptions *opts) {
     printf("  Total log entries: %lu, Dropped: %lu\n\n",
            (unsigned long)total, (unsigned long)dropped);
 
-    printf("  Log files are stored in: /tmp/cudabridge_logs/\n");
-    printf("  Use: tail -f /tmp/cudabridge_logs/*.log  for live monitoring\n");
+    printf("  Log files are stored in: /tmp/coherence_logs/\n");
+    printf("  Use: tail -f /tmp/coherence_logs/*.log  for live monitoring\n");
 
     if (opts->log_level[0] != '\0') {
         printf("  Filter level: %s\n", opts->log_level);
     }
 
-    printf("\n  %sTip:%s Set log level with: cudabridge-cli config set log_level DEBUG\n\n",
+    printf("\n  %sTip:%s Set log level with: coherence-cli config set log_level DEBUG\n\n",
            C_CYAN, C_RESET);
     return CLI_OK;
 }
@@ -588,7 +588,7 @@ int cmd_benchmark(int argc, char *argv[], CLIOptions *opts) {
 
     EGPUConnectionState state = egpu_get_state();
     if (state != EGPU_STATE_CONNECTED) {
-        printf("\n  %sNo eGPU connected. Connect first: cudabridge-cli connect%s\n\n",
+        printf("\n  %sNo eGPU connected. Connect first: coherence-cli connect%s\n\n",
                C_DIM, C_RESET);
         return CLI_ERR_DEVICE;
     }
@@ -671,7 +671,7 @@ int cmd_help(int argc, char *argv[], CLIOptions *opts) {
     }
 
     cli_print_banner();
-    printf("\n  %sUsage:%s cudabridge-cli <command> [options]\n\n", C_BOLD, C_RESET);
+    printf("\n  %sUsage:%s coherence-cli <command> [options]\n\n", C_BOLD, C_RESET);
     printf("  %sCommands:%s\n", C_BOLD, C_RESET);
 
     for (int i = 0; commands[i].name; i++) {
@@ -692,14 +692,14 @@ int cmd_help(int argc, char *argv[], CLIOptions *opts) {
     printf("    --level LEVEL     로그 필터 레벨\n");
 
     printf("\n  %sExamples:%s\n", C_BOLD, C_RESET);
-    printf("    cudabridge-cli info                 GPU 정보 확인\n");
-    printf("    cudabridge-cli connect              eGPU 연결\n");
-    printf("    cudabridge-cli monitor -i 500       500ms 간격 모니터링\n");
-    printf("    cudabridge-cli config show           현재 설정 확인\n");
-    printf("    cudabridge-cli config clock 2100 1200  클럭 속도 변경\n");
-    printf("    cudabridge-cli disconnect --force   강제 해제\n");
-    printf("    cudabridge-cli diag                 진단 실행\n");
-    printf("    cudabridge-cli log -n 50 --level ERROR  오류 로그 확인\n");
+    printf("    coherence-cli info                 GPU 정보 확인\n");
+    printf("    coherence-cli connect              eGPU 연결\n");
+    printf("    coherence-cli monitor -i 500       500ms 간격 모니터링\n");
+    printf("    coherence-cli config show           현재 설정 확인\n");
+    printf("    coherence-cli config clock 2100 1200  클럭 속도 변경\n");
+    printf("    coherence-cli disconnect --force   강제 해제\n");
+    printf("    coherence-cli diag                 진단 실행\n");
+    printf("    coherence-cli log -n 50 --level ERROR  오류 로그 확인\n");
     printf("\n");
 
     return CLI_OK;
@@ -708,8 +708,8 @@ int cmd_help(int argc, char *argv[], CLIOptions *opts) {
 int cmd_version(int argc, char *argv[], CLIOptions *opts) {
     (void)argc; (void)argv; (void)opts;
 
-    printf("cudabridge-cli version 1.0.0\n");
-    printf("CudaBridge Driver version 1.0.0\n");
+    printf("coherence-cli version 1.0.0\n");
+    printf("Coherence Driver version 1.0.0\n");
     printf("CUDA Bridge API version 12.0\n");
     printf("Build: %s %s\n", __DATE__, __TIME__);
     return CLI_OK;
@@ -790,7 +790,7 @@ int main(int argc, char *argv[]) {
         .max_file_size = 10 * 1024 * 1024,
         .max_rotated_files = 5,
     };
-    snprintf(log_config.log_dir, sizeof(log_config.log_dir), "/tmp/cudabridge_logs");
+    snprintf(log_config.log_dir, sizeof(log_config.log_dir), "/tmp/coherence_logs");
     cb_log_init(&log_config);
 
     /* eGPU 안전 관리자 초기화 */
@@ -809,7 +809,7 @@ int main(int argc, char *argv[]) {
         result = cmd->handler(sub_argc, sub_argv, &opts);
     } else {
         fprintf(stderr, "Unknown command: %s\n", argv[cmd_start]);
-        fprintf(stderr, "Run 'cudabridge-cli help' for usage information.\n");
+        fprintf(stderr, "Run 'coherence-cli help' for usage information.\n");
         result = CLI_ERR_ARGS;
     }
 

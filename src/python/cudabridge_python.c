@@ -1,5 +1,5 @@
 /**
- * CudaBridge - Python C Extension API Implementation
+ * Coherence - Python C Extension API Implementation
  *
  * Python 사용자가 별도의 CUDA 라이브러리 없이 기존 Python/numpy 코드와
  * 거의 동일한 구조로 eGPU CUDA 연산을 수행할 수 있게 합니다.
@@ -241,7 +241,7 @@ void cbpy_free(CBPyArray *arr) {
 
 /*
  * 실제 환경에서는 이 연산들이 CUDA 커널로 GPU에서 실행됩니다.
- * CudaBridge 드라이버가 연산 데이터를 eGPU로 전달하고 결과를 받아옵니다.
+ * Coherence 드라이버가 연산 데이터를 eGPU로 전달하고 결과를 받아옵니다.
  * 시뮬레이션 모드에서는 CPU에서 동일한 연산을 수행합니다.
  */
 

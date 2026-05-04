@@ -1,5 +1,5 @@
 /**
- * CudaBridge - eGPU Connection Safety Manager Implementation
+ * Coherence - eGPU Connection Safety Manager Implementation
  *
  * eGPU의 안전한 연결/해제 및 오류 복구를 구현합니다.
  */

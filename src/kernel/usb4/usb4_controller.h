@@ -1,12 +1,12 @@
 /**
- * CudaBridge - USB4 Controller Interface
+ * Coherence - USB4 Controller Interface
  *
  * Apple Silicon USB4 컨트롤러와의 저수준 통신을 담당합니다.
  * USB4는 Thunderbolt 3/4와 호환되며 PCIe 터널링을 지원합니다.
  */
 
-#ifndef CUDABRIDGE_USB4_CONTROLLER_H
-#define CUDABRIDGE_USB4_CONTROLLER_H
+#ifndef COHERENCE_USB4_CONTROLLER_H
+#define COHERENCE_USB4_CONTROLLER_H
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -219,4 +219,4 @@ void usb4_register_hotplug_callback(USB4ControllerContext *ctx,
 void usb4_register_error_callback(USB4ControllerContext *ctx,
                                   void (*callback)(int, const char*));
 
-#endif /* CUDABRIDGE_USB4_CONTROLLER_H */
+#endif /* COHERENCE_USB4_CONTROLLER_H */

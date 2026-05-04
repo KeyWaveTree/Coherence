@@ -3,8 +3,8 @@ exec_prefix=${prefix}
 libdir=${prefix}/@CMAKE_INSTALL_LIBDIR@
 includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@
 
-Name: CudaBridge
+Name: Coherence
 Description: CUDA support for Apple Silicon Macs via eGPU
 Version: @PROJECT_VERSION@
-Libs: -L${libdir} -lcudabridge
+Libs: -L${libdir} -lcoherence
 Cflags: -I${includedir}

@@ -1,5 +1,5 @@
 /**
- * CudaBridge Example - Device Information
+ * Coherence Example - Device Information
  *
  * 연결된 GPU 디바이스의 상세 정보를 출력합니다.
  */
@@ -149,20 +149,20 @@ int main(void)
 {
     printf("\n");
     print_separator();
-    printf(" CudaBridge - GPU Device Information\n");
+    printf(" Coherence - GPU Device Information\n");
     print_separator();
 
-    /* CudaBridge 초기화 */
+    /* Coherence 초기화 */
     cbError_t err = cbInit();
     if (err != cbSuccess) {
-        printf("\nFailed to initialize CudaBridge: %s\n", cbGetErrorString(err));
+        printf("\nFailed to initialize Coherence: %s\n", cbGetErrorString(err));
         return 1;
     }
 
     /* 버전 정보 */
     int version;
     cbGetVersion(&version);
-    printf("\n  CudaBridge Version: %d.%d.%d\n",
+    printf("\n  Coherence Version: %d.%d.%d\n",
            version / 10000, (version / 100) % 100, version % 100);
 
     cbGetDriverVersion(&version);

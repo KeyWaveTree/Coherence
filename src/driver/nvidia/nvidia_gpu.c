@@ -1,5 +1,5 @@
 /**
- * CudaBridge - NVIDIA GPU Driver Implementation
+ * Coherence - NVIDIA GPU Driver Implementation
  *
  * NVIDIA GPU 하드웨어 드라이버 구현
  */

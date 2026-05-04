@@ -1,13 +1,13 @@
 /**
- * CudaBridge - eGPU Connection Safety Manager
+ * Coherence - eGPU Connection Safety Manager
  *
  * Thunderbolt/USB4를 통해 연결된 eGPU의 안전한 연결, 해제, 오류 복구를
  * 관리합니다. 핫플러그 감지, 연결 상태 모니터링, 자동 복구 메커니즘을
  * 제공합니다.
  */
 
-#ifndef CUDABRIDGE_EGPU_SAFETY_H
-#define CUDABRIDGE_EGPU_SAFETY_H
+#ifndef COHERENCE_EGPU_SAFETY_H
+#define COHERENCE_EGPU_SAFETY_H
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -239,4 +239,4 @@ uint32_t egpu_compute_crc32(const void *data, size_t size);
 }
 #endif
 
-#endif /* CUDABRIDGE_EGPU_SAFETY_H */
+#endif /* COHERENCE_EGPU_SAFETY_H */

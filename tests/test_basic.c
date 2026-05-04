@@ -1,5 +1,5 @@
 /**
- * CudaBridge - Basic Functionality Test
+ * Coherence - Basic Functionality Test
  *
  * 기본 API 동작 테스트
  */
@@ -61,7 +61,7 @@ void test_version(void)
         return;
     }
 
-    printf("  CudaBridge version: %d.%d.%d\n",
+    printf("  Coherence version: %d.%d.%d\n",
            version / 10000, (version / 100) % 100, version % 100);
 
     err = cbGetDriverVersion(&version);
@@ -374,7 +374,7 @@ void test_shutdown(void)
 
 int main(void)
 {
-    printf("\n=== CudaBridge Basic Functionality Tests ===\n\n");
+    printf("\n=== Coherence Basic Functionality Tests ===\n\n");
 
     test_init();
     test_version();

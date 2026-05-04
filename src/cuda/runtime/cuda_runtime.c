@@ -1,5 +1,5 @@
 /**
- * CudaBridge - CUDA Runtime API Implementation
+ * Coherence - CUDA Runtime API Implementation
  *
  * CUDA Runtime API 호환 레이어 구현
  */
@@ -33,7 +33,7 @@ typedef struct HostAllocInfo {
 } HostAllocInfo;
 
 /* 전역 상태 */
-typedef struct CudaBridgeState {
+typedef struct CoherenceState {
     bool                    initialized;
     USB4ControllerContext   usb4_ctx;
     PCIeTunnelContext       pcie_ctx;
@@ -44,9 +44,9 @@ typedef struct CudaBridgeState {
     pthread_mutex_t         lock;
     HostAllocInfo           host_allocs[MAX_HOST_ALLOCS];
     int                     host_alloc_count;
-} CudaBridgeState;
+} CoherenceState;
 
-static CudaBridgeState g_state = { .initialized = false };
+static CoherenceState g_state = { .initialized = false };
 
 /* 스트림 구조체 */
 struct CUstream_st {
@@ -82,12 +82,12 @@ static void track_host_alloc(void *ptr, bool is_managed);
 static bool free_tracked_host_alloc(void *ptr);
 
 /* 버전 정보 */
-#define CUDABRIDGE_VERSION_MAJOR 1
-#define CUDABRIDGE_VERSION_MINOR 0
+#define COHERENCE_VERSION_MAJOR 1
+#define COHERENCE_VERSION_MINOR 0
 #define CUDA_VERSION 12000  /* CUDA 12.0 호환 */
 
 /**
- * CudaBridge 초기화
+ * Coherence 초기화
  */
 cudaError_t cudaBridgeInit(void)
 {
@@ -95,8 +95,8 @@ cudaError_t cudaBridgeInit(void)
         return cudaSuccess;
     }
 
-    CUDA_LOG("Initializing CudaBridge v%d.%d...",
-             CUDABRIDGE_VERSION_MAJOR, CUDABRIDGE_VERSION_MINOR);
+    CUDA_LOG("Initializing Coherence v%d.%d...",
+             COHERENCE_VERSION_MAJOR, COHERENCE_VERSION_MINOR);
 
     pthread_mutex_init(&g_state.lock, NULL);
 
@@ -160,7 +160,7 @@ cudaError_t cudaBridgeInit(void)
         if (gpu) {
             /* 시뮬레이션용 가상 GPU 설정 */
             gpu->state = NV_GPU_STATE_READY;
-            strcpy(gpu->info.name, "CudaBridge Virtual GPU");
+            strcpy(gpu->info.name, "Coherence Virtual GPU");
             gpu->info.architecture = NV_ARCH_AMPERE;
             gpu->info.vram_size = 8ULL * 1024 * 1024 * 1024;
             gpu->info.compute_cap_major = 8;
@@ -179,13 +179,13 @@ cudaError_t cudaBridgeInit(void)
     g_state.initialized = true;
     g_state.last_error = cudaSuccess;
 
-    CUDA_LOG("CudaBridge initialized: %d GPU(s) available", g_state.gpu_count);
+    CUDA_LOG("Coherence initialized: %d GPU(s) available", g_state.gpu_count);
 
     return cudaSuccess;
 }
 
 /**
- * CudaBridge 종료
+ * Coherence 종료
  */
 cudaError_t cudaBridgeShutdown(void)
 {
@@ -193,7 +193,7 @@ cudaError_t cudaBridgeShutdown(void)
         return cudaSuccess;
     }
 
-    CUDA_LOG("Shutting down CudaBridge...");
+    CUDA_LOG("Shutting down Coherence...");
 
     pthread_mutex_lock(&g_state.lock);
 
@@ -219,11 +219,11 @@ cudaError_t cudaBridgeShutdown(void)
 
     /* 보안: 전역 상태 민감 데이터 제거 */
     volatile uint8_t *p = (volatile uint8_t *)&g_state;
-    for (size_t i = 0; i < sizeof(CudaBridgeState); i++) {
+    for (size_t i = 0; i < sizeof(CoherenceState); i++) {
         p[i] = 0;
     }
 
-    CUDA_LOG("CudaBridge shutdown complete");
+    CUDA_LOG("Coherence shutdown complete");
 
     return cudaSuccess;
 }

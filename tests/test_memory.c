@@ -1,5 +1,5 @@
 /**
- * CudaBridge - Memory Management Test
+ * Coherence - Memory Management Test
  *
  * 메모리 할당, 전송, 해제 테스트
  */
@@ -252,11 +252,11 @@ cleanup:
 
 int main(void)
 {
-    printf("\n=== CudaBridge Memory Management Tests ===\n\n");
+    printf("\n=== Coherence Memory Management Tests ===\n\n");
 
     cbError_t err = cbInit();
     if (err != cbSuccess) {
-        printf("Failed to initialize CudaBridge: %s\n", cbGetErrorString(err));
+        printf("Failed to initialize Coherence: %s\n", cbGetErrorString(err));
         return 1;
     }
 

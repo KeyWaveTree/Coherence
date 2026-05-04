@@ -1,5 +1,5 @@
 /**
- * CudaBridge - USB4 Controller Implementation
+ * Coherence - USB4 Controller Implementation
  *
  * Apple Silicon USB4 컨트롤러 드라이버 구현
  */

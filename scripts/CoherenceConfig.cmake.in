@@ -1,0 +1,30 @@
+@PACKAGE_INIT@
+
+include("${CMAKE_CURRENT_LIST_DIR}/CoherenceTargets.cmake" OPTIONAL)
+
+# Find Coherence library
+find_library(COHERENCE_LIBRARY
+    NAMES coherence
+    PATHS "${CMAKE_CURRENT_LIST_DIR}/../../../lib"
+)
+
+find_path(COHERENCE_INCLUDE_DIR
+    NAMES coherence.h
+    PATHS "${CMAKE_CURRENT_LIST_DIR}/../../../include"
+)
+
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(Coherence
+    REQUIRED_VARS COHERENCE_LIBRARY COHERENCE_INCLUDE_DIR
+)
+
+if(Coherence_FOUND AND NOT TARGET Coherence::coherence)
+    add_library(Coherence::coherence UNKNOWN IMPORTED)
+    set_target_properties(Coherence::coherence PROPERTIES
+        IMPORTED_LOCATION "${COHERENCE_LIBRARY}"
+        INTERFACE_INCLUDE_DIRECTORIES "${COHERENCE_INCLUDE_DIR}"
+    )
+endif()
+
+set(COHERENCE_LIBRARIES ${COHERENCE_LIBRARY})
+set(COHERENCE_INCLUDE_DIRS ${COHERENCE_INCLUDE_DIR})

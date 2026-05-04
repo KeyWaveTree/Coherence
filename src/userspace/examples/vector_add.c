@@ -1,5 +1,5 @@
 /**
- * CudaBridge Example - Vector Addition
+ * Coherence Example - Vector Addition
  *
  * GPU를 사용한 벡터 덧셈 예제
  * 실제 CUDA 커널 대신 CPU 에뮬레이션을 사용합니다.
@@ -37,12 +37,12 @@ int verify_result(float *a, float *b, float *c, int n)
 
 int main(void)
 {
-    printf("\n=== CudaBridge Vector Addition Example ===\n\n");
+    printf("\n=== Coherence Vector Addition Example ===\n\n");
 
-    /* CudaBridge 초기화 */
+    /* Coherence 초기화 */
     cbError_t err = cbInit();
     if (err != cbSuccess) {
-        printf("Failed to initialize CudaBridge: %s\n", cbGetErrorString(err));
+        printf("Failed to initialize Coherence: %s\n", cbGetErrorString(err));
         return 1;
     }
 
@@ -217,7 +217,7 @@ cleanup:
     if (h_b) cbFreeHost(h_b);
     if (h_c) cbFreeHost(h_c);
 
-    /* CudaBridge 종료 */
+    /* Coherence 종료 */
     cbShutdown();
 
     printf("Done.\n\n");

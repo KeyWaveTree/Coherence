@@ -1,5 +1,5 @@
 /**
- * CudaBridge - GPU Memory Manager Implementation
+ * Coherence - GPU Memory Manager Implementation
  */
 
 #include "memory_manager.h"

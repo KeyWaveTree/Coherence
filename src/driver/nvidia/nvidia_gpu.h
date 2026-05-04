@@ -1,12 +1,12 @@
 /**
- * CudaBridge - NVIDIA GPU Driver Interface
+ * Coherence - NVIDIA GPU Driver Interface
  *
  * NVIDIA GPU 하드웨어와의 저수준 통신을 담당합니다.
  * GPU 초기화, 명령 제출, 메모리 관리 등을 처리합니다.
  */
 
-#ifndef CUDABRIDGE_NVIDIA_GPU_H
-#define CUDABRIDGE_NVIDIA_GPU_H
+#ifndef COHERENCE_NVIDIA_GPU_H
+#define COHERENCE_NVIDIA_GPU_H
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -267,4 +267,4 @@ int nv_gpu_set_clocks(NVGpuContext *ctx, uint32_t gpu_mhz, uint32_t mem_mhz);
  */
 const char* nv_arch_name(NVArchitecture arch);
 
-#endif /* CUDABRIDGE_NVIDIA_GPU_H */
+#endif /* COHERENCE_NVIDIA_GPU_H */

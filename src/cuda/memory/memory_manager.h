@@ -1,11 +1,11 @@
 /**
- * CudaBridge - GPU Memory Manager
+ * Coherence - GPU Memory Manager
  *
  * GPU 메모리 할당, 가상 주소 공간 관리, 통합 메모리를 담당합니다.
  */
 
-#ifndef CUDABRIDGE_MEMORY_MANAGER_H
-#define CUDABRIDGE_MEMORY_MANAGER_H
+#ifndef COHERENCE_MEMORY_MANAGER_H
+#define COHERENCE_MEMORY_MANAGER_H
 
 #include <stdint.h>
 #include <stddef.h>
@@ -177,4 +177,4 @@ void cb_memory_pool_dump(CBMemoryPool *pool, const char *name);
  */
 void cb_memory_manager_stats(CBMemoryManager *mgr);
 
-#endif /* CUDABRIDGE_MEMORY_MANAGER_H */
+#endif /* COHERENCE_MEMORY_MANAGER_H */

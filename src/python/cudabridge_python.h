@@ -1,5 +1,5 @@
 /**
- * CudaBridge - Python C Extension API Header
+ * Coherence - Python C Extension API Header
  *
  * Python에서 CUDA 연산을 기존 코드와 유사한 방식으로 사용할 수 있게
  * 해주는 C 확장 모듈의 헤더입니다.
@@ -11,8 +11,8 @@
  *   result = cb.from_device(gpu_array)
  */
 
-#ifndef CUDABRIDGE_PYTHON_H
-#define CUDABRIDGE_PYTHON_H
+#ifndef COHERENCE_PYTHON_H
+#define COHERENCE_PYTHON_H
 
 #include <stddef.h>
 #include <stdint.h>
@@ -130,4 +130,4 @@ int cbpy_mem_info(size_t *free_bytes, size_t *total_bytes);
 }
 #endif
 
-#endif /* CUDABRIDGE_PYTHON_H */
+#endif /* COHERENCE_PYTHON_H */

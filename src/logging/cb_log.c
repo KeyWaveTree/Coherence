@@ -1,5 +1,5 @@
 /**
- * CudaBridge - Logging System Implementation
+ * Coherence - Logging System Implementation
  */
 
 #include "cb_log.h"
@@ -82,7 +82,7 @@ static int open_log_file(void) {
 
     /* 헤더 작성 */
     fprintf(g_log.log_file,
-            "=== CudaBridge Log Started at %04d-%02d-%02d %02d:%02d:%02d ===\n",
+            "=== Coherence Log Started at %04d-%02d-%02d %02d:%02d:%02d ===\n",
             tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday,
             tm->tm_hour, tm->tm_min, tm->tm_sec);
     fflush(g_log.log_file);
@@ -105,12 +105,12 @@ int cb_log_init(const CBLogConfig *config) {
 
     if (config->enable_file) {
         if (ensure_log_dir(config->log_dir) != 0) {
-            fprintf(stderr, "[CudaBridge] Failed to create log directory: %s\n",
+            fprintf(stderr, "[Coherence] Failed to create log directory: %s\n",
                     config->log_dir);
             return -1;
         }
         if (open_log_file() != 0) {
-            fprintf(stderr, "[CudaBridge] Failed to open log file\n");
+            fprintf(stderr, "[Coherence] Failed to open log file\n");
             return -1;
         }
     }
@@ -133,7 +133,7 @@ int cb_log_init_default(void) {
         .max_file_size = 10 * 1024 * 1024,   /* 10MB */
         .max_rotated_files = 5,
     };
-    snprintf(config.log_dir, sizeof(config.log_dir), "/tmp/cudabridge_logs");
+    snprintf(config.log_dir, sizeof(config.log_dir), "/tmp/coherence_logs");
     return cb_log_init(&config);
 }
 
@@ -143,7 +143,7 @@ void cb_log_shutdown(void) {
     pthread_mutex_lock(&g_log.lock);
 
     if (g_log.log_file) {
-        fprintf(g_log.log_file, "=== CudaBridge Log Ended ===\n");
+        fprintf(g_log.log_file, "=== Coherence Log Ended ===\n");
         fclose(g_log.log_file);
         g_log.log_file = NULL;
     }

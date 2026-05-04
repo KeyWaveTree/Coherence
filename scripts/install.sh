@@ -1,5 +1,5 @@
 #!/bin/bash
-# CudaBridge - Installation Script
+# Coherence - Installation Script
 # Apple Silicon Mac에서 eGPU CUDA 드라이버 설치
 set -e
 
@@ -15,7 +15,7 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-log()   { echo -e "${GREEN}[CudaBridge]${NC} $*"; }
+log()   { echo -e "${GREEN}[Coherence]${NC} $*"; }
 warn()  { echo -e "${YELLOW}[WARNING]${NC} $*"; }
 error() { echo -e "${RED}[ERROR]${NC} $*"; exit 1; }
 
@@ -28,7 +28,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-log "CudaBridge v${VERSION} Installer"
+log "Coherence v${VERSION} Installer"
 echo "============================================"
 echo ""
 
@@ -40,7 +40,7 @@ ARCH="$(uname -m)"
 
 if [ "$OS" = "Darwin" ]; then
     if [ "$ARCH" != "arm64" ]; then
-        warn "CudaBridge is designed for Apple Silicon (arm64). Detected: $ARCH"
+        warn "Coherence is designed for Apple Silicon (arm64). Detected: $ARCH"
         warn "Building anyway, but eGPU features require Apple Silicon."
     fi
 
@@ -69,7 +69,7 @@ CMAKE_VER="$(cmake --version | head -1 | grep -oE '[0-9]+\.[0-9]+')"
 log "CMake version: $CMAKE_VER"
 
 # 빌드
-log "Building CudaBridge (${BUILD_TYPE})..."
+log "Building Coherence (${BUILD_TYPE})..."
 echo ""
 
 cd "$BUILD_DIR"
@@ -141,7 +141,7 @@ fi
 
 echo ""
 echo "============================================"
-log "CudaBridge v${VERSION} installed successfully!"
+log "Coherence v${VERSION} installed successfully!"
 echo ""
 echo "  Headers: ${PREFIX}/include/cudabridge.h"
 echo "  Library: ${PREFIX}/lib/libcudabridge.so (shared)"
@@ -154,6 +154,6 @@ echo ""
 echo "  Compile: gcc -o myapp myapp.c -lcudabridge"
 echo "  Or:      gcc -o myapp myapp.c \$(pkg-config --cflags --libs cudabridge)"
 echo ""
-echo "  CMake:   find_package(CudaBridge REQUIRED)"
-echo "           target_link_libraries(myapp CudaBridge::cudabridge)"
+echo "  CMake:   find_package(Coherence REQUIRED)"
+echo "           target_link_libraries(myapp Coherence::cudabridge)"
 echo ""

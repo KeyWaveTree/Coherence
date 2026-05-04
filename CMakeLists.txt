@@ -1,9 +1,9 @@
-# CudaBridge - CMake Build Configuration
+# Coherence - CMake Build Configuration
 #
 # Apple Silicon Mac에서 eGPU를 통한 CUDA 연산 지원
 
 cmake_minimum_required(VERSION 3.20)
-project(CudaBridge VERSION 1.0.0 LANGUAGES C CXX)
+project(Coherence VERSION 1.0.0 LANGUAGES C CXX)
 
 # C/C++ 표준
 set(CMAKE_C_STANDARD 11)
@@ -20,7 +20,7 @@ option(ENABLE_ASAN "Enable Address Sanitizer" OFF)
 
 # macOS 확인
 if(NOT APPLE)
-    message(WARNING "CudaBridge is designed for macOS with Apple Silicon")
+    message(WARNING "Coherence is designed for macOS with Apple Silicon")
 endif()
 
 # Apple Silicon 확인
@@ -31,7 +31,7 @@ if(APPLE)
         OUTPUT_STRIP_TRAILING_WHITESPACE
     )
     if(NOT ARCH STREQUAL "arm64")
-        message(WARNING "CudaBridge requires Apple Silicon (arm64)")
+        message(WARNING "Coherence requires Apple Silicon (arm64)")
     endif()
 endif()
 
@@ -163,27 +163,27 @@ set_target_properties(cudabridge_static PROPERTIES
 )
 
 # CLI 도구 빌드
-add_executable(cudabridge-cli
+add_executable(coherence-cli
     src/cli/cudabridge_cli.c
     ${LOGGING_SOURCES}
     ${EGPU_SOURCES}
 )
 
-target_include_directories(cudabridge-cli PRIVATE
+target_include_directories(coherence-cli PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
-target_link_libraries(cudabridge-cli PRIVATE Threads::Threads)
+target_link_libraries(coherence-cli PRIVATE Threads::Threads)
 
 if(APPLE)
-    target_link_libraries(cudabridge-cli PRIVATE
+    target_link_libraries(coherence-cli PRIVATE
         ${IOKIT_FRAMEWORK}
         ${COREFOUNDATION_FRAMEWORK}
         ${SECURITY_FRAMEWORK}
     )
 endif()
 
-install(TARGETS cudabridge-cli
+install(TARGETS coherence-cli
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
@@ -253,12 +253,12 @@ install(FILES src/userspace/include/cudabridge.h
 
 # pkg-config 파일 생성
 configure_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/scripts/cudabridge.pc.in
-    ${CMAKE_CURRENT_BINARY_DIR}/cudabridge.pc
+    ${CMAKE_CURRENT_SOURCE_DIR}/scripts/coherence.pc.in
+    ${CMAKE_CURRENT_BINARY_DIR}/coherence.pc
     @ONLY
 )
 
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/cudabridge.pc
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/coherence.pc
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
 )
 
@@ -266,21 +266,21 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/cudabridge.pc
 include(CMakePackageConfigHelpers)
 
 configure_package_config_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/scripts/CudaBridgeConfig.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/CudaBridgeConfig.cmake
-    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/CudaBridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/scripts/CoherenceConfig.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/CoherenceConfig.cmake
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/Coherence
 )
 
 write_basic_package_version_file(
-    ${CMAKE_CURRENT_BINARY_DIR}/CudaBridgeConfigVersion.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/CoherenceConfigVersion.cmake
     VERSION ${PROJECT_VERSION}
     COMPATIBILITY SameMajorVersion
 )
 
 install(FILES
-    ${CMAKE_CURRENT_BINARY_DIR}/CudaBridgeConfig.cmake
-    ${CMAKE_CURRENT_BINARY_DIR}/CudaBridgeConfigVersion.cmake
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/CudaBridge
+    ${CMAKE_CURRENT_BINARY_DIR}/CoherenceConfig.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/CoherenceConfigVersion.cmake
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/Coherence
 )
 
 # CUDA 호환 헤더 설치
@@ -289,12 +289,12 @@ install(FILES src/cuda/runtime/cuda_runtime.h
 )
 
 # CPack 배포 패키징
-set(CPACK_PACKAGE_NAME "CudaBridge")
+set(CPACK_PACKAGE_NAME "Coherence")
 set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
-set(CPACK_PACKAGE_VENDOR "CudaBridge Project")
+set(CPACK_PACKAGE_VENDOR "Coherence Project")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY
     "CUDA support for Apple Silicon Macs via eGPU over USB4/Thunderbolt")
-set(CPACK_PACKAGE_CONTACT "https://github.com/KeyWaveTree/CudaBridge")
+set(CPACK_PACKAGE_CONTACT "https://github.com/KeyWaveTree/Coherence")
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
 set(CPACK_RESOURCE_FILE_README "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
 set(CPACK_SOURCE_IGNORE_FILES "/build/;/dist/;/\\\\.git/;\\\\.gitignore")
@@ -311,7 +311,7 @@ include(CPack)
 
 # 요약 출력
 message(STATUS "")
-message(STATUS "CudaBridge ${PROJECT_VERSION} Configuration:")
+message(STATUS "Coherence ${PROJECT_VERSION} Configuration:")
 message(STATUS "  Platform: ${CMAKE_SYSTEM_NAME} ${CMAKE_SYSTEM_PROCESSOR}")
 message(STATUS "  Compiler: ${CMAKE_C_COMPILER_ID} ${CMAKE_C_COMPILER_VERSION}")
 message(STATUS "  Build type: ${CMAKE_BUILD_TYPE}")

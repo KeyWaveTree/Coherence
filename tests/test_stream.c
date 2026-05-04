@@ -1,5 +1,5 @@
 /**
- * CudaBridge - Stream and Event Test
+ * Coherence - Stream and Event Test
  *
  * 스트림과 이벤트 기능 테스트
  */
@@ -273,11 +273,11 @@ void test_stream_event_combo(void)
 
 int main(void)
 {
-    printf("\n=== CudaBridge Stream and Event Tests ===\n\n");
+    printf("\n=== Coherence Stream and Event Tests ===\n\n");
 
     cbError_t err = cbInit();
     if (err != cbSuccess) {
-        printf("Failed to initialize CudaBridge: %s\n", cbGetErrorString(err));
+        printf("Failed to initialize Coherence: %s\n", cbGetErrorString(err));
         return 1;
     }
 

@@ -1,12 +1,12 @@
 /**
- * CudaBridge - CUDA Runtime API Compatibility Layer
+ * Coherence - CUDA Runtime API Compatibility Layer
  *
  * NVIDIA CUDA Runtime API와 호환되는 인터페이스를 제공합니다.
  * 기존 CUDA 애플리케이션을 최소한의 수정으로 사용할 수 있습니다.
  */
 
-#ifndef CUDABRIDGE_CUDA_RUNTIME_H
-#define CUDABRIDGE_CUDA_RUNTIME_H
+#ifndef COHERENCE_CUDA_RUNTIME_H
+#define COHERENCE_CUDA_RUNTIME_H
 
 #include <stddef.h>
 #include <stdint.h>
@@ -216,16 +216,16 @@ cudaError_t cudaLaunchKernel(const void *func, dim3 gridDim, dim3 blockDim,
                              void **args, size_t sharedMem,
                              cudaStream_t stream);
 
-/* 확장 함수들 (CudaBridge 전용) */
+/* 확장 함수들 (Coherence 전용) */
 
 /**
- * CudaBridge 초기화
+ * Coherence 초기화
  * CUDA API 사용 전에 호출 필요
  */
 cudaError_t cudaBridgeInit(void);
 
 /**
- * CudaBridge 종료
+ * Coherence 종료
  * 모든 CUDA 작업 후 호출
  */
 cudaError_t cudaBridgeShutdown(void);
@@ -257,4 +257,4 @@ cudaError_t cudaBridgeGetBandwidthInfo(size_t *upstreamBw,
 
 #endif
 
-#endif /* CUDABRIDGE_CUDA_RUNTIME_H */
+#endif /* COHERENCE_CUDA_RUNTIME_H */

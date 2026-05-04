@@ -1,5 +1,5 @@
 /**
- * CudaBridge - ARM Compatibility Test
+ * Coherence - ARM Compatibility Test
  *
  * ARM64 아키텍처(Apple Silicon 등)에서의 호환성 테스트
  */
@@ -334,7 +334,7 @@ void test_align_macro(void)
  */
 void test_64bit_addresses(void)
 {
-    /* GPU 메모리 주소 시뮬레이션 (실제 CudaBridge에서 사용하는 값들) */
+    /* GPU 메모리 주소 시뮬레이션 (실제 Coherence에서 사용하는 값들) */
     uint64_t gpu_base = 0x200000000ULL;      /* 8GB offset */
     uint64_t managed_base = 0x100000000ULL;  /* 4GB offset */
     uint64_t bar_base = 0x80000000ULL;       /* 2GB offset */
@@ -384,19 +384,19 @@ void test_apple_silicon(void)
         TEST_PASS("Apple Silicon platform");
     #else
         printf("  Intel Mac detected\n");
-        printf("  [WARN] CudaBridge is optimized for Apple Silicon\n");
+        printf("  [WARN] Coherence is optimized for Apple Silicon\n");
         TEST_PASS("macOS Intel platform");
     #endif
 #else
     printf("  Platform: Non-Apple\n");
-    printf("  [WARN] CudaBridge is designed for macOS\n");
+    printf("  [WARN] Coherence is designed for macOS\n");
     TEST_PASS("non-Apple platform");
 #endif
 }
 
 int main(void)
 {
-    printf("\n=== CudaBridge ARM Compatibility Tests ===\n\n");
+    printf("\n=== Coherence ARM Compatibility Tests ===\n\n");
 
     printf("== Architecture Tests ==\n");
     test_architecture();

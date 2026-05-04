@@ -1,5 +1,5 @@
 /**
- * CudaBridge - Userspace Library Implementation
+ * Coherence - Userspace Library Implementation
  *
  * 공개 API 구현
  */
@@ -78,7 +78,7 @@ cbError_t cbGetVersion(int *version)
         return cbErrorInvalidValue;
     }
 
-    *version = CUDABRIDGE_VERSION;
+    *version = COHERENCE_VERSION;
     return cbSuccess;
 }
 
@@ -421,7 +421,7 @@ const char* cbGetErrorString(cbError_t error)
         case cbErrorOutOfMemory:
             return "out of memory";
         case cbErrorNotInitialized:
-            return "CudaBridge not initialized";
+            return "Coherence not initialized";
         case cbErrorNoDevice:
             return "no CUDA-capable device detected";
         case cbErrorInvalidDevice:

@@ -1,5 +1,5 @@
 """
-CudaBridge Python API
+Coherence Python API
 =====================
 
 Apple Silicon Mac에서 eGPU를 통한 CUDA 연산을 Python에서 쉽게 사용할 수 있는 API.
@@ -47,7 +47,7 @@ _initialized = False
 
 
 def _load_library():
-    """CudaBridge 공유 라이브러리 로드"""
+    """Coherence 공유 라이브러리 로드"""
     global _lib
 
     lib_names = []
@@ -77,7 +77,7 @@ def _load_library():
 
 # ========== 데이터 타입 매핑 ==========
 
-# numpy dtype -> CudaBridge dtype 코드
+# numpy dtype -> Coherence dtype 코드
 _DTYPE_MAP = {
     np.float32: 0,   # CB_DTYPE_FLOAT32
     np.float64: 1,   # CB_DTYPE_FLOAT64
@@ -201,7 +201,7 @@ class GPUArray:
 
 def init():
     """
-    CudaBridge 초기화.
+    Coherence 초기화.
 
     eGPU 연결을 확인하고 CUDA 브릿지를 초기화합니다.
     모든 GPU 연산 전에 호출해야 합니다.
@@ -216,14 +216,14 @@ def init():
 
     _load_library()
     _initialized = True
-    print("[CudaBridge] Initialized (simulation mode)")
-    print(f"[CudaBridge] Platform: {platform.machine()}")
-    print(f"[CudaBridge] Python: {sys.version.split()[0]}")
+    print("[Coherence] Initialized (simulation mode)")
+    print(f"[Coherence] Platform: {platform.machine()}")
+    print(f"[Coherence] Python: {sys.version.split()[0]}")
 
 
 def shutdown():
     """
-    CudaBridge 종료.
+    Coherence 종료.
 
     GPU 리소스를 해제하고 연결을 정리합니다.
 
@@ -234,7 +234,7 @@ def shutdown():
     if not _initialized:
         return
     _initialized = False
-    print("[CudaBridge] Shutdown complete")
+    print("[Coherence] Shutdown complete")
 
 
 def to_device(data: np.ndarray) -> GPUArray:
@@ -252,7 +252,7 @@ def to_device(data: np.ndarray) -> GPUArray:
         gpu_a = cb.to_device(a)
     """
     if not _initialized:
-        raise RuntimeError("CudaBridge not initialized. Call cb.init() first.")
+        raise RuntimeError("Coherence not initialized. Call cb.init() first.")
 
     if not isinstance(data, np.ndarray):
         data = np.asarray(data)

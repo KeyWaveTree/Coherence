@@ -1,5 +1,5 @@
 #!/bin/bash
-# CudaBridge - Uninstallation Script
+# Coherence - Uninstallation Script
 set -e
 
 PREFIX="${INSTALL_PREFIX:-/usr/local}"
@@ -9,10 +9,10 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-log()  { echo -e "${GREEN}[CudaBridge]${NC} $*"; }
+log()  { echo -e "${GREEN}[Coherence]${NC} $*"; }
 warn() { echo -e "${YELLOW}[WARNING]${NC} $*"; }
 
-log "CudaBridge Uninstaller"
+log "Coherence Uninstaller"
 echo "============================================"
 echo ""
 
@@ -34,7 +34,7 @@ do_rm() {
     fi
 }
 
-log "Removing CudaBridge files from ${PREFIX}..."
+log "Removing Coherence files from ${PREFIX}..."
 echo ""
 
 # 헤더
@@ -53,7 +53,7 @@ do_rm "${PREFIX}/lib/libcudabridge.1.0.0.dylib"
 do_rm "${PREFIX}/lib/pkgconfig/cudabridge.pc"
 
 # CMake 설정
-do_rm "${PREFIX}/lib/cmake/CudaBridge"
+do_rm "${PREFIX}/lib/cmake/Coherence"
 
 # ldconfig (Linux)
 if [ "$(uname -s)" = "Linux" ]; then
@@ -70,4 +70,4 @@ if [ "$(uname -s)" = "Linux" ]; then
 fi
 
 echo ""
-log "CudaBridge uninstalled successfully."
+log "Coherence uninstalled successfully."

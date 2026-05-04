@@ -1,22 +1,22 @@
 /**
- * CudaBridge CLI - GPU Driver Control Interface
+ * Coherence CLI - GPU Driver Control Interface
  *
  * nvidia-smi와 유사한 GPU 제어/모니터링 CLI 도구입니다.
  * GPU 설정, eGPU 연결 관리, 성능 모니터링, 진단 기능을 제공합니다.
  *
  * 주요 명령:
- *   cudabridge-cli info          - GPU 정보 표시
- *   cudabridge-cli status        - 연결 상태 표시
- *   cudabridge-cli connect       - eGPU 연결
- *   cudabridge-cli disconnect    - eGPU 안전 해제
- *   cudabridge-cli monitor       - 실시간 모니터링
- *   cudabridge-cli config        - 설정 관리
- *   cudabridge-cli diag          - 진단 실행
- *   cudabridge-cli log           - 로그 조회
+ *   coherence-cli info          - GPU 정보 표시
+ *   coherence-cli status        - 연결 상태 표시
+ *   coherence-cli connect       - eGPU 연결
+ *   coherence-cli disconnect    - eGPU 안전 해제
+ *   coherence-cli monitor       - 실시간 모니터링
+ *   coherence-cli config        - 설정 관리
+ *   coherence-cli diag          - 진단 실행
+ *   coherence-cli log           - 로그 조회
  */
 
-#ifndef CUDABRIDGE_CLI_H
-#define CUDABRIDGE_CLI_H
+#ifndef COHERENCE_CLI_H
+#define COHERENCE_CLI_H
 
 #include <stddef.h>
 #include <stdint.h>
@@ -84,4 +84,4 @@ const char* cli_format_temperature(int celsius, char *buf, size_t buf_size);
 }
 #endif
 
-#endif /* CUDABRIDGE_CLI_H */
+#endif /* COHERENCE_CLI_H */

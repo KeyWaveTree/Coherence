@@ -1,12 +1,12 @@
 /**
- * CudaBridge - PCIe Tunneling Layer
+ * Coherence - PCIe Tunneling Layer
  *
  * USB4/Thunderbolt를 통한 PCIe 패킷 터널링을 담당합니다.
  * PCIe Configuration Space, Memory-Mapped I/O, DMA를 처리합니다.
  */
 
-#ifndef CUDABRIDGE_PCIE_TUNNEL_H
-#define CUDABRIDGE_PCIE_TUNNEL_H
+#ifndef COHERENCE_PCIE_TUNNEL_H
+#define COHERENCE_PCIE_TUNNEL_H
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -254,4 +254,4 @@ int pcie_setup_msi(PCIeDevice *device, int num_vectors);
  */
 PCIeDevice* pcie_find_nvidia_gpu(PCIeTunnelContext *ctx);
 
-#endif /* CUDABRIDGE_PCIE_TUNNEL_H */
+#endif /* COHERENCE_PCIE_TUNNEL_H */

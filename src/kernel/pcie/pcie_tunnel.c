@@ -1,5 +1,5 @@
 /**
- * CudaBridge - PCIe Tunneling Implementation
+ * Coherence - PCIe Tunneling Implementation
  *
  * USB4/Thunderbolt를 통한 PCIe 터널링 구현
  */

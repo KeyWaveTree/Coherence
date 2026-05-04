@@ -1,12 +1,12 @@
 /**
- * CudaBridge - Logging System
+ * Coherence - Logging System
  *
  * GPU 드라이버 디버깅을 위한 구조화된 로깅 시스템.
  * 파일/콘솔 출력, 로그 레벨, 로그 로테이션을 지원합니다.
  */
 
-#ifndef CUDABRIDGE_LOG_H
-#define CUDABRIDGE_LOG_H
+#ifndef COHERENCE_LOG_H
+#define COHERENCE_LOG_H
 
 #include <stdarg.h>
 #include <stdint.h>
@@ -154,4 +154,4 @@ void cb_log_get_stats(uint64_t *total_entries, uint64_t *dropped_entries);
 }
 #endif
 
-#endif /* CUDABRIDGE_LOG_H */
+#endif /* COHERENCE_LOG_H */

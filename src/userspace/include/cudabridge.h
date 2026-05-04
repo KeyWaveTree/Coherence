@@ -1,5 +1,5 @@
 /**
- * CudaBridge - Public API Header
+ * Coherence - Public API Header
  *
  * Apple Silicon Mac에서 eGPU를 통한 CUDA 연산을 위한 공개 API입니다.
  *
@@ -11,13 +11,13 @@
  *   cbShutdown();
  *
  * 또는 CUDA 호환 모드:
- *   #define CUDABRIDGE_COMPAT_MODE
+ *   #define COHERENCE_COMPAT_MODE
  *   #include <cudabridge.h>
  *   // 기존 CUDA 코드 그대로 사용 가능
  */
 
-#ifndef CUDABRIDGE_H
-#define CUDABRIDGE_H
+#ifndef COHERENCE_H
+#define COHERENCE_H
 
 #include <stddef.h>
 #include <stdint.h>
@@ -27,13 +27,13 @@ extern "C" {
 #endif
 
 /* 버전 정보 */
-#define CUDABRIDGE_VERSION_MAJOR 1
-#define CUDABRIDGE_VERSION_MINOR 0
-#define CUDABRIDGE_VERSION_PATCH 0
-#define CUDABRIDGE_VERSION \
-    ((CUDABRIDGE_VERSION_MAJOR * 10000) + \
-     (CUDABRIDGE_VERSION_MINOR * 100) + \
-     CUDABRIDGE_VERSION_PATCH)
+#define COHERENCE_VERSION_MAJOR 1
+#define COHERENCE_VERSION_MINOR 0
+#define COHERENCE_VERSION_PATCH 0
+#define COHERENCE_VERSION \
+    ((COHERENCE_VERSION_MAJOR * 10000) + \
+     (COHERENCE_VERSION_MINOR * 100) + \
+     COHERENCE_VERSION_PATCH)
 
 /* 에러 코드 */
 typedef enum cbError {
@@ -117,7 +117,7 @@ typedef struct dim3 {
 /* ========== 초기화 및 종료 ========== */
 
 /**
- * CudaBridge 초기화
+ * Coherence 초기화
  * 모든 다른 API 호출 전에 반드시 호출해야 합니다.
  *
  * @return cbSuccess 성공, 그 외 에러 코드
@@ -125,7 +125,7 @@ typedef struct dim3 {
 cbError_t cbInit(void);
 
 /**
- * CudaBridge 종료
+ * Coherence 종료
  * 모든 리소스를 해제합니다.
  *
  * @return cbSuccess 성공
@@ -142,7 +142,7 @@ int cbIsInitialized(void);
 /* ========== 버전 정보 ========== */
 
 /**
- * CudaBridge 버전 조회
+ * Coherence 버전 조회
  *
  * @param version 버전 번호 출력 (MAJOR*10000 + MINOR*100 + PATCH)
  * @return cbSuccess 성공
@@ -463,9 +463,9 @@ cbError_t cbGetPCIeTunnelStatus(int *isActive, int *bandwidth);
 #endif
 
 /* ========== CUDA 호환 모드 ========== */
-#ifdef CUDABRIDGE_COMPAT_MODE
+#ifdef COHERENCE_COMPAT_MODE
 
-/* CUDA API 이름을 CudaBridge API로 매핑 */
+/* CUDA API 이름을 Coherence API로 매핑 */
 #define cudaSuccess             cbSuccess
 #define cudaError_t             cbError_t
 
@@ -511,6 +511,6 @@ cbError_t cbGetPCIeTunnelStatus(int *isActive, int *bandwidth);
 #define cudaMemcpyDeviceToHost  CB_MEMCPY_DEVICE_TO_HOST
 #define cudaMemcpyDeviceToDevice CB_MEMCPY_DEVICE_TO_DEVICE
 
-#endif /* CUDABRIDGE_COMPAT_MODE */
+#endif /* COHERENCE_COMPAT_MODE */
 
-#endif /* CUDABRIDGE_H */
+#endif /* COHERENCE_H */

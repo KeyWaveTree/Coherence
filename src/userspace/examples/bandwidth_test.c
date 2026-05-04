@@ -1,5 +1,5 @@
 /**
- * CudaBridge Example - Bandwidth Test
+ * Coherence Example - Bandwidth Test
  *
  * USB4/Thunderbolt를 통한 eGPU 데이터 전송 대역폭을 측정합니다.
  */
@@ -107,13 +107,13 @@ int main(void)
 {
     printf("\n");
     printf("═══════════════════════════════════════════════════════════════\n");
-    printf("     CudaBridge - USB4/Thunderbolt eGPU Bandwidth Test\n");
+    printf("     Coherence - USB4/Thunderbolt eGPU Bandwidth Test\n");
     printf("═══════════════════════════════════════════════════════════════\n");
 
-    /* CudaBridge 초기화 */
+    /* Coherence 초기화 */
     cbError_t err = cbInit();
     if (err != cbSuccess) {
-        printf("Failed to initialize CudaBridge: %s\n", cbGetErrorString(err));
+        printf("Failed to initialize Coherence: %s\n", cbGetErrorString(err));
         return 1;
     }
 

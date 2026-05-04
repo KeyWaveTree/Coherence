@@ -1,5 +1,5 @@
 #!/bin/bash
-# CudaBridge - Distribution Packaging Script
+# Coherence - Distribution Packaging Script
 # 배포 가능한 아카이브 및 macOS pkg 생성
 set -e
 
@@ -26,7 +26,7 @@ OS="$(uname -s)"
 ARCH="$(uname -m)"
 PLATFORM="${OS}-${ARCH}"
 
-log "CudaBridge v${VERSION} Packaging"
+log "Coherence v${VERSION} Packaging"
 echo "============================================"
 log "Platform: ${PLATFORM}"
 echo ""
@@ -130,7 +130,7 @@ chmod +x "$ARCHIVE_DIR/install.sh" "$ARCHIVE_DIR/uninstall.sh"
 
 # README for binary package
 cat > "$ARCHIVE_DIR/INSTALL.txt" << 'INSTALLEOF'
-CudaBridge - Installation Guide
+Coherence - Installation Guide
 ================================
 
 Quick Install (from source):
@@ -181,7 +181,7 @@ log "Created: dist/${ARCHIVE_NAME}.tar.gz"
 if [ "$OS" = "Darwin" ] && command -v pkgbuild &>/dev/null; then
     log "Creating macOS installer package..."
 
-    PKG_NAME="CudaBridge-${VERSION}.pkg"
+    PKG_NAME="Coherence-${VERSION}.pkg"
 
     pkgbuild \
         --root "$STAGE_DIR" \
@@ -211,8 +211,8 @@ else
         --exclude='build' \
         --exclude='dist' \
         --exclude='.git' \
-        --transform "s/^CudaBridge/${SRC_ARCHIVE}/" \
-        CudaBridge/
+        --transform "s/^Coherence/${SRC_ARCHIVE}/" \
+        Coherence/
 fi
 
 log "Created: dist/${SRC_ARCHIVE}.tar.gz"
@@ -248,7 +248,7 @@ echo "  ./install.sh"
 echo ""
 if [ "$OS" = "Darwin" ]; then
     echo "Or install via macOS package:"
-    echo "  sudo installer -pkg CudaBridge-${VERSION}.pkg -target /"
+    echo "  sudo installer -pkg Coherence-${VERSION}.pkg -target /"
     echo ""
 fi
 echo "To install from source:"
