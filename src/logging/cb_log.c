@@ -62,7 +62,7 @@ static int ensure_log_dir(const char *dir) {
     if (stat(dir, &st) == 0) {
         return S_ISDIR(st.st_mode) ? 0 : -1;
     }
-    return mkdir(dir, 0755);
+    return mkdir(dir, 0700);
 }
 
 static int open_log_file(void) {

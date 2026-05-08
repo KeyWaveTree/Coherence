@@ -57,16 +57,17 @@ do_rm "${PREFIX}/lib/cmake/Coherence"
 
 # ldconfig (Linux)
 if [ "$(uname -s)" = "Linux" ]; then
-    if [ -f /etc/ld.so.conf.d/cudabridge.conf ]; then
-        if [ "$NEED_SUDO" = true ]; then
-            sudo rm -f /etc/ld.so.conf.d/cudabridge.conf
-            sudo ldconfig
-        else
-            rm -f /etc/ld.so.conf.d/cudabridge.conf
-            ldconfig 2>/dev/null || true
+    for conf in coherence.conf cudabridge.conf; do
+        if [ -f "/etc/ld.so.conf.d/$conf" ]; then
+            if [ "$NEED_SUDO" = true ]; then
+                sudo rm -f "/etc/ld.so.conf.d/$conf"
+            else
+                rm -f "/etc/ld.so.conf.d/$conf"
+            fi
+            log "  Removed ldconfig entry: $conf"
         fi
-        log "  Removed ldconfig entry"
-    fi
+    done
+    ldconfig 2>/dev/null || sudo ldconfig 2>/dev/null || true
 fi
 
 echo ""

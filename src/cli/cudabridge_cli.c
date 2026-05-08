@@ -9,13 +9,26 @@
 #include "../egpu/egpu_safety.h"
 
 #include <ctype.h>
+#include <errno.h>
 #include <getopt.h>
+#include <limits.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+
+static int safe_atoi(const char *s, int *out) {
+    char *end;
+    errno = 0;
+    long val = strtol(s, &end, 10);
+    if (errno != 0 || end == s || *end != '\0' || val < INT_MIN || val > INT_MAX) {
+        return -1;
+    }
+    *out = (int)val;
+    return 0;
+}
 
 /* ========== 전역 상태 ========== */
 
@@ -88,6 +101,25 @@ const char* cli_format_bytes(uint64_t bytes, char *buf, size_t buf_size) {
     return buf;
 }
 
+static void cli_print_json_string(const char *s) {
+    putchar('"');
+    for (; *s; s++) {
+        switch (*s) {
+            case '"':  fputs("\\\"", stdout); break;
+            case '\\': fputs("\\\\", stdout); break;
+            case '\n': fputs("\\n", stdout);  break;
+            case '\r': fputs("\\r", stdout);  break;
+            case '\t': fputs("\\t", stdout);  break;
+            default:
+                if ((unsigned char)*s < 0x20)
+                    printf("\\u%04x", (unsigned char)*s);
+                else
+                    putchar(*s);
+        }
+    }
+    putchar('"');
+}
+
 const char* cli_format_bandwidth(uint64_t bps, char *buf, size_t buf_size) {
     if (bps >= 1000000000ULL) {
         snprintf(buf, buf_size, "%.1f Gbps", (double)bps / 1000000000.0);
@@ -156,10 +188,10 @@ int cmd_info(int argc, char *argv[], CLIOptions *opts) {
         printf("  \"cuda_version\": \"12.0 (Bridge)\",\n");
         if (has_device) {
             printf("  \"gpu\": {\n");
-            printf("    \"name\": \"%s\",\n", info.name);
+            printf("    \"name\": "); cli_print_json_string(info.name); printf(",\n");
             printf("    \"vendor_id\": \"0x%04X\",\n", info.vendor_id);
             printf("    \"device_id\": \"0x%04X\",\n", info.device_id);
-            printf("    \"serial\": \"%s\",\n", info.serial);
+            printf("    \"serial\": "); cli_print_json_string(info.serial); printf(",\n");
             printf("    \"connection\": \"%s\",\n",
                    info.conn_type == EGPU_CONN_USB4 ? "USB4" :
                    info.conn_type == EGPU_CONN_THUNDERBOLT3 ? "Thunderbolt 3" :
@@ -357,7 +389,8 @@ int cmd_monitor(int argc, char *argv[], CLIOptions *opts) {
         return CLI_ERR_DEVICE;
     }
 
-    int interval = opts->interval_ms > 0 ? opts->interval_ms : 1000;
+    int interval = (opts->interval_ms > 0 && opts->interval_ms <= 60000)
+                   ? opts->interval_ms : 1000;
 
     signal(SIGINT, signal_handler);
     printf("  Monitoring GPU (interval: %dms, Ctrl+C to stop)\n\n", interval);
@@ -454,8 +487,11 @@ int cmd_config(int argc, char *argv[], CLIOptions *opts) {
             printf("  Usage: coherence-cli config clock <gpu_mhz> <mem_mhz>\n");
             return CLI_ERR_ARGS;
         }
-        int gpu_mhz = atoi(argv[1]);
-        int mem_mhz = atoi(argv[2]);
+        int gpu_mhz, mem_mhz;
+        if (safe_atoi(argv[1], &gpu_mhz) != 0 || safe_atoi(argv[2], &mem_mhz) != 0) {
+            printf("  Invalid clock value. Must be an integer.\n");
+            return CLI_ERR_ARGS;
+        }
         printf("  Setting GPU clock: %d MHz, Memory clock: %d MHz\n", gpu_mhz, mem_mhz);
         printf("  %s✓ Clock speeds updated (simulated)%s\n\n", C_GREEN, C_RESET);
     } else if (strcmp(subcmd, "power") == 0) {
@@ -463,7 +499,11 @@ int cmd_config(int argc, char *argv[], CLIOptions *opts) {
             printf("  Usage: coherence-cli config power <limit_watts>\n");
             return CLI_ERR_ARGS;
         }
-        int watts = atoi(argv[1]);
+        int watts;
+        if (safe_atoi(argv[1], &watts) != 0) {
+            printf("  Invalid power value. Must be an integer.\n");
+            return CLI_ERR_ARGS;
+        }
         printf("  Setting power limit: %d W\n", watts);
         printf("  %s✓ Power limit updated (simulated)%s\n\n", C_GREEN, C_RESET);
     } else if (strcmp(subcmd, "fan") == 0) {
@@ -746,11 +786,11 @@ static int parse_options(int argc, char *argv[], CLIOptions *opts, int *cmd_star
             } else if (strcmp(argv[i], "-f") == 0 || strcmp(argv[i], "--force") == 0) {
                 opts->force = 1;
             } else if ((strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "--device") == 0) && i + 1 < argc) {
-                opts->device_index = atoi(argv[++i]);
+                safe_atoi(argv[++i], &opts->device_index);
             } else if ((strcmp(argv[i], "-i") == 0 || strcmp(argv[i], "--interval") == 0) && i + 1 < argc) {
-                opts->interval_ms = atoi(argv[++i]);
+                safe_atoi(argv[++i], &opts->interval_ms);
             } else if ((strcmp(argv[i], "-n") == 0 || strcmp(argv[i], "--lines") == 0) && i + 1 < argc) {
-                opts->log_lines = atoi(argv[++i]);
+                safe_atoi(argv[++i], &opts->log_lines);
             } else if (strcmp(argv[i], "--level") == 0 && i + 1 < argc) {
                 strncpy(opts->log_level, argv[++i], sizeof(opts->log_level) - 1);
             } else if (strcmp(argv[i], "--hard") == 0) {

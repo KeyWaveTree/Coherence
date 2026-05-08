@@ -160,7 +160,7 @@ cudaError_t cudaBridgeInit(void)
         if (gpu) {
             /* 시뮬레이션용 가상 GPU 설정 */
             gpu->state = NV_GPU_STATE_READY;
-            strcpy(gpu->info.name, "Coherence Virtual GPU");
+            snprintf(gpu->info.name, sizeof(gpu->info.name), "Coherence Virtual GPU");
             gpu->info.architecture = NV_ARCH_AMPERE;
             gpu->info.vram_size = 8ULL * 1024 * 1024 * 1024;
             gpu->info.compute_cap_major = 8;

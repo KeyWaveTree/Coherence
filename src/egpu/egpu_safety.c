@@ -42,7 +42,7 @@ static struct {
     void                   *callback_data;
     pthread_mutex_t         lock;
     pthread_t               monitor_thread;
-    int                     monitor_running;
+    volatile int            monitor_running;
     int                     retry_count;
 } g_egpu = {0};
 

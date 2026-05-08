@@ -87,12 +87,12 @@ cmake --install .
 # =============================================
 log "Creating distribution archive..."
 
-ARCHIVE_NAME="cudabridge-${VERSION}-${PLATFORM}"
+ARCHIVE_NAME="coherence-${VERSION}-${PLATFORM}"
 ARCHIVE_DIR="$BUILD_DIR/${ARCHIVE_NAME}"
 mkdir -p "$ARCHIVE_DIR"
 
 # 바이너리 배포 구조
-mkdir -p "$ARCHIVE_DIR"/{lib,include,share/doc/cudabridge,share/pkgconfig,examples,bin}
+mkdir -p "$ARCHIVE_DIR"/{lib,include,share/doc/coherence,share/pkgconfig,examples,bin}
 
 # 라이브러리 복사
 cp -a "$INSTALL_PREFIX"/lib/libcudabridge* "$ARCHIVE_DIR/lib/" 2>/dev/null || true
@@ -110,8 +110,8 @@ fi
 cp "$INSTALL_PREFIX"/lib/pkgconfig/cudabridge.pc "$ARCHIVE_DIR/share/pkgconfig/" 2>/dev/null || true
 
 # 문서
-cp "$PROJECT_DIR/LICENSE" "$ARCHIVE_DIR/share/doc/cudabridge/" 2>/dev/null || true
-cp "$PROJECT_DIR/README.md" "$ARCHIVE_DIR/share/doc/cudabridge/" 2>/dev/null || true
+cp "$PROJECT_DIR/LICENSE" "$ARCHIVE_DIR/share/doc/coherence/" 2>/dev/null || true
+cp "$PROJECT_DIR/README.md" "$ARCHIVE_DIR/share/doc/coherence/" 2>/dev/null || true
 
 # 예제 소스
 cp "$PROJECT_DIR"/src/userspace/examples/*.c "$ARCHIVE_DIR/examples/" 2>/dev/null || true
@@ -185,7 +185,7 @@ if [ "$OS" = "Darwin" ] && command -v pkgbuild &>/dev/null; then
 
     pkgbuild \
         --root "$STAGE_DIR" \
-        --identifier "com.cudabridge.driver" \
+        --identifier "com.coherence.driver" \
         --version "$VERSION" \
         --install-location "/" \
         "$DIST_DIR/$PKG_NAME"
@@ -199,7 +199,7 @@ fi
 log "Creating source archive..."
 
 cd "$PROJECT_DIR"
-SRC_ARCHIVE="cudabridge-${VERSION}-source"
+SRC_ARCHIVE="coherence-${VERSION}-source"
 
 # git archive 사용 (있으면)
 if command -v git &>/dev/null && git rev-parse --git-dir &>/dev/null; then

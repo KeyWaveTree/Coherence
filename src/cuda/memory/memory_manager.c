@@ -29,8 +29,9 @@
 #define CB_ERR_NO_MEMORY       -2
 #define CB_ERR_NOT_FOUND       -3
 
-/* 정렬 매크로 */
-#define ALIGN_UP(x, align) (((x) + (align) - 1) & ~((align) - 1))
+/* 정렬 매크로 (overflow-safe) */
+#define ALIGN_UP(x, align) \
+    (((x) > SIZE_MAX - ((align) - 1)) ? SIZE_MAX : (((x) + (align) - 1) & ~((align) - 1)))
 
 /* 내부 함수 */
 static int pool_init(CBMemoryPool *pool, uint64_t base, size_t size, size_t page_size);
