@@ -158,7 +158,10 @@ def from_device(gpu_array: GPUArray, dtype: Optional[type] = None) -> np.ndarray
     if gpu_array.backend != "native":
         raise RuntimeError(f"Unknown backend: {gpu_array.backend}")
 
-    out = np.empty(gpu_array.shape, dtype=out_dtype)
+    if out_dtype != gpu_array.dtype:
+        raise TypeError("Native from_device does not support dtype conversion; copy the original dtype and cast the returned array")
+
+    out = np.empty(gpu_array.shape, dtype=gpu_array.dtype)
     rc = _lib.cbpy_from_device(gpu_array.native_handle, ctypes.c_void_p(out.ctypes.data))
     if rc == 0:
         return out

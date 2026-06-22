@@ -321,12 +321,85 @@ CBPyArray* cbpy_matmul(CBPyArray *a, CBPyArray *b) {
     return NULL;
 }
 
+static int apply_scalar_op_double(double value, double scalar, int op, double *out) {
+    if (!out) return -1;
+
+    switch (op) {
+        case CBPY_OP_ADD:
+            *out = value + scalar;
+            return 0;
+        case CBPY_OP_SUB:
+            *out = value - scalar;
+            return 0;
+        case CBPY_OP_MUL:
+            *out = value * scalar;
+            return 0;
+        case CBPY_OP_DIV:
+            if (scalar == 0.0) return -1;
+            *out = value / scalar;
+            return 0;
+        default:
+            return -1;
+    }
+}
+
 CBPyArray* cbpy_scalar_op(CBPyArray *arr, double scalar, int op) {
-    (void)scalar;
-    (void)op;
-    if (arr) {
+    if (ensure_initialized() != 0) return NULL;
+    if (!arr || !arr->device_ptr || arr->size == 0) return NULL;
+
+    void *host_data = malloc(arr->size);
+    if (!host_data) return NULL;
+
+    cbError_t copy_err = cbMemcpy(host_data, arr->device_ptr, arr->size, CB_MEMCPY_DEVICE_TO_HOST);
+    if (copy_err != cbSuccess) {
+        free(host_data);
         return NULL;
     }
+
+#define APPLY_SCALAR_CASE(dtype_const, c_type) \
+    case dtype_const: { \
+        c_type *p = (c_type *)host_data; \
+        for (size_t i = 0; i < arr->elem_count; i++) { \
+            double result = 0.0; \
+            if (apply_scalar_op_double((double)p[i], scalar, op, &result) != 0) { \
+                free(host_data); \
+                return NULL; \
+            } \
+            p[i] = (c_type)result; \
+        } \
+        break; \
+    }
+
+    switch (arr->dtype) {
+        APPLY_SCALAR_CASE(CB_DTYPE_FLOAT32, float)
+        APPLY_SCALAR_CASE(CB_DTYPE_FLOAT64, double)
+        APPLY_SCALAR_CASE(CB_DTYPE_INT32, int32_t)
+        APPLY_SCALAR_CASE(CB_DTYPE_INT64, int64_t)
+        APPLY_SCALAR_CASE(CB_DTYPE_UINT8, uint8_t)
+        APPLY_SCALAR_CASE(CB_DTYPE_UINT32, uint32_t)
+        APPLY_SCALAR_CASE(CB_DTYPE_INT8, int8_t)
+        APPLY_SCALAR_CASE(CB_DTYPE_INT16, int16_t)
+        APPLY_SCALAR_CASE(CB_DTYPE_BOOL, uint8_t)
+        default:
+            free(host_data);
+            return NULL;
+    }
+
+#undef APPLY_SCALAR_CASE
+
+    CBPyArray *out = create_device_array(arr->elem_count, arr->dtype, arr->ndim, arr->shape);
+    if (!out) {
+        free(host_data);
+        return NULL;
+    }
+
+    copy_err = cbMemcpy(out->device_ptr, host_data, out->size, CB_MEMCPY_HOST_TO_DEVICE);
+    free(host_data);
+    if (copy_err == cbSuccess) {
+        return out;
+    }
+
+    cbpy_free(out);
     return NULL;
 }
 
