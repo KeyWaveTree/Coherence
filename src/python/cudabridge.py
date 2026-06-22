@@ -30,6 +30,7 @@ _REDUCE_OP_MAP = {"sum": 0, "mean": 1, "max": 2, "min": 3}
 _lib = None
 _initialized = False
 _backend = None
+_native_runtime_simulation = False
 
 
 def _require_initialized() -> None:
@@ -70,14 +71,25 @@ def _dtype_code(dtype: np.dtype) -> int:
     raise TypeError(f"Unsupported dtype: {dtype}")
 
 
+def _native_is_simulation_mode() -> bool:
+    if _lib is None or not hasattr(_lib, "cudaBridgeIsSimulationMode"):
+        return False
+
+    is_simulation = ctypes.c_int(0)
+    rc = _lib.cudaBridgeIsSimulationMode(ctypes.byref(is_simulation))
+    if rc != 0:
+        raise RuntimeError(f"cudaBridgeIsSimulationMode failed: {rc}")
+    return bool(is_simulation.value)
+
+
 def is_simulation_mode() -> bool:
     if _backend is None:
         return False
-    return _backend == "simulation"
+    return _backend == "simulation" or _native_runtime_simulation
 
 
 def init(allow_simulation: bool = False) -> None:
-    global _initialized, _backend, _lib
+    global _initialized, _backend, _lib, _native_runtime_simulation
     if _initialized:
         return
 
@@ -86,6 +98,7 @@ def init(allow_simulation: bool = False) -> None:
         if not allow_simulation:
             raise RuntimeError("Native CudaBridge library not found; pass allow_simulation=True to run CPU simulation")
         _backend = "simulation"
+        _native_runtime_simulation = False
         _initialized = True
         print("[CudaBridge] Initialized (simulation mode)")
         print(f"[CudaBridge] Platform: {platform.machine()}")
@@ -98,19 +111,31 @@ def init(allow_simulation: bool = False) -> None:
         if not allow_simulation:
             raise RuntimeError(f"cbpy_init failed: {rc}")
         _backend = "simulation"
+        _native_runtime_simulation = False
         _initialized = True
         print("[CudaBridge] Native init failed, fallback to simulation mode")
         return
 
+    native_simulation = _native_is_simulation_mode()
+    if native_simulation and not allow_simulation:
+        _lib.cbpy_shutdown()
+        _lib = None
+        raise RuntimeError(
+            "Native CudaBridge initialized in simulation mode; "
+            "pass allow_simulation=True to use the runtime fallback"
+        )
+
     _backend = "native"
+    _native_runtime_simulation = native_simulation
     _initialized = True
-    print("[CudaBridge] Initialized (native mode)")
+    mode = "native simulation" if native_simulation else "native"
+    print(f"[CudaBridge] Initialized ({mode} mode)")
     print(f"[CudaBridge] Platform: {platform.machine()}")
     print(f"[CudaBridge] Python: {sys.version.split()[0]}")
 
 
 def shutdown() -> None:
-    global _initialized, _backend, _lib
+    global _initialized, _backend, _lib, _native_runtime_simulation
     if not _initialized:
         return
 
@@ -120,6 +145,7 @@ def shutdown() -> None:
     _initialized = False
     _backend = None
     _lib = None
+    _native_runtime_simulation = False
     print("[CudaBridge] Shutdown complete")
 
 

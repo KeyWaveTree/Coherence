@@ -73,3 +73,7 @@ def bind_native_api(lib: ctypes.CDLL) -> None:
 
     lib.cbpy_mem_info.argtypes = [ctypes.POINTER(size_t), ctypes.POINTER(size_t)]
     lib.cbpy_mem_info.restype = ctypes.c_int
+
+    if hasattr(lib, "cudaBridgeIsSimulationMode"):
+        lib.cudaBridgeIsSimulationMode.argtypes = [ctypes.POINTER(ctypes.c_int)]
+        lib.cudaBridgeIsSimulationMode.restype = ctypes.c_int

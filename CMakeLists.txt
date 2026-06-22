@@ -196,7 +196,10 @@ install(FILES src/python/cudabridge_python.h
 )
 
 # Python 모듈 설치
-install(FILES src/python/cudabridge.py
+install(FILES
+    src/python/cudabridge.py
+    src/python/cudabridge_native.py
+    src/python/gpu_array.py
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/python/cudabridge
 )
 
