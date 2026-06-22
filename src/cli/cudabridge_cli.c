@@ -53,7 +53,7 @@ static CLICommand commands[] = {
     {"benchmark",  "b",  "성능 벤치마크 실행",                  "cudabridge-cli benchmark",                    cmd_benchmark},
     {"reset",      "r",  "GPU 리셋",                           "cudabridge-cli reset [--hard]",               cmd_reset},
     {"help",       "h",  "도움말 표시",                        "cudabridge-cli help [command]",                cmd_help},
-    {"version",    "v",  "버전 정보 표시",                     "cudabridge-cli version",                      cmd_version},
+    {"version",    "ver",  "버전 정보 표시",                   "cudabridge-cli version",                      cmd_version},
     {NULL, NULL, NULL, NULL, NULL}
 };
 
@@ -735,31 +735,59 @@ static int parse_options(int argc, char *argv[], CLIOptions *opts, int *cmd_star
     *cmd_start = 1;
 
     for (int i = 1; i < argc; i++) {
-        if (argv[i][0] == '-') {
-            if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--verbose") == 0) {
-                opts->verbose = 1;
-            } else if (strcmp(argv[i], "-j") == 0 || strcmp(argv[i], "--json") == 0) {
-                opts->json_output = 1;
-            } else if (strcmp(argv[i], "--no-color") == 0) {
-                opts->no_color = 1;
-                g_use_color = 0;
-            } else if (strcmp(argv[i], "-f") == 0 || strcmp(argv[i], "--force") == 0) {
-                opts->force = 1;
-            } else if ((strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "--device") == 0) && i + 1 < argc) {
-                opts->device_index = atoi(argv[++i]);
-            } else if ((strcmp(argv[i], "-i") == 0 || strcmp(argv[i], "--interval") == 0) && i + 1 < argc) {
-                opts->interval_ms = atoi(argv[++i]);
-            } else if ((strcmp(argv[i], "-n") == 0 || strcmp(argv[i], "--lines") == 0) && i + 1 < argc) {
-                opts->log_lines = atoi(argv[++i]);
-            } else if (strcmp(argv[i], "--level") == 0 && i + 1 < argc) {
-                strncpy(opts->log_level, argv[++i], sizeof(opts->log_level) - 1);
-            } else if (strcmp(argv[i], "--hard") == 0) {
-                opts->force = 1;
-            }
-        } else {
+        if (strcmp(argv[i], "--") == 0) {
+            *cmd_start = i + 1;
+            return 0;
+        }
+
+        if (argv[i][0] != '-') {
             *cmd_start = i;
             return 0;
         }
+
+        if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--verbose") == 0) {
+            opts->verbose = 1;
+            continue;
+        }
+
+        if (strcmp(argv[i], "-j") == 0 || strcmp(argv[i], "--json") == 0) {
+            opts->json_output = 1;
+            continue;
+        }
+
+        if (strcmp(argv[i], "--no-color") == 0) {
+            opts->no_color = 1;
+            g_use_color = 0;
+            continue;
+        }
+
+        if (strcmp(argv[i], "-f") == 0 || strcmp(argv[i], "--force") == 0 || strcmp(argv[i], "--hard") == 0) {
+            opts->force = 1;
+            continue;
+        }
+
+        if ((strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "--device") == 0) && i + 1 < argc) {
+            opts->device_index = atoi(argv[++i]);
+            continue;
+        }
+
+        if ((strcmp(argv[i], "-i") == 0 || strcmp(argv[i], "--interval") == 0) && i + 1 < argc) {
+            opts->interval_ms = atoi(argv[++i]);
+            continue;
+        }
+
+        if ((strcmp(argv[i], "-n") == 0 || strcmp(argv[i], "--lines") == 0) && i + 1 < argc) {
+            opts->log_lines = atoi(argv[++i]);
+            continue;
+        }
+
+        if (strcmp(argv[i], "--level") == 0 && i + 1 < argc) {
+            strncpy(opts->log_level, argv[++i], sizeof(opts->log_level) - 1);
+            continue;
+        }
+
+        fprintf(stderr, "Unknown option: %s\n", argv[i]);
+        return CLI_ERR_ARGS;
     }
 
     return 0;
@@ -772,7 +800,11 @@ int main(int argc, char *argv[]) {
     int cmd_start;
 
     /* 옵션 파싱 */
-    parse_options(argc, argv, &opts, &cmd_start);
+    int parse_result = parse_options(argc, argv, &opts, &cmd_start);
+    if (parse_result != CLI_OK) {
+        cmd_help(0, NULL, &opts);
+        return parse_result;
+    }
 
     if (argc < 2 || cmd_start >= argc) {
         cmd_help(0, NULL, &opts);
