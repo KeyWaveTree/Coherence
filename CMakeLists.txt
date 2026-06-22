@@ -5,6 +5,9 @@
 cmake_minimum_required(VERSION 3.20)
 project(CudaBridge VERSION 1.0.0 LANGUAGES C CXX)
 
+# 설치 경로 변수 설정
+include(GNUInstallDirs)
+
 # C/C++ 표준
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -72,6 +75,18 @@ set(CUDA_SOURCES
     src/cuda/memory/memory_manager.c
 )
 
+set(LOGGING_SOURCES
+    src/logging/cb_log.c
+)
+
+set(EGPU_SOURCES
+    src/egpu/egpu_safety.c
+)
+
+set(PYTHON_API_SOURCES
+    src/python/cudabridge_python.c
+)
+
 set(USERSPACE_SOURCES
     src/userspace/lib/cudabridge.c
 )
@@ -81,6 +96,9 @@ add_library(cudabridge
     ${KERNEL_SOURCES}
     ${DRIVER_SOURCES}
     ${CUDA_SOURCES}
+    ${LOGGING_SOURCES}
+    ${EGPU_SOURCES}
+    ${PYTHON_API_SOURCES}
     ${USERSPACE_SOURCES}
 )
 
@@ -118,6 +136,9 @@ add_library(cudabridge_static STATIC
     ${KERNEL_SOURCES}
     ${DRIVER_SOURCES}
     ${CUDA_SOURCES}
+    ${LOGGING_SOURCES}
+    ${EGPU_SOURCES}
+    ${PYTHON_API_SOURCES}
     ${USERSPACE_SOURCES}
 )
 
@@ -142,6 +163,49 @@ target_link_libraries(cudabridge_static PRIVATE Threads::Threads)
 
 set_target_properties(cudabridge_static PROPERTIES
     OUTPUT_NAME cudabridge
+)
+
+# CLI 도구 빌드
+add_executable(cudabridge-cli
+    src/cli/cudabridge_cli.c
+    ${LOGGING_SOURCES}
+    ${EGPU_SOURCES}
+)
+
+target_include_directories(cudabridge-cli PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+
+target_link_libraries(cudabridge-cli PRIVATE Threads::Threads)
+
+if(APPLE)
+    target_link_libraries(cudabridge-cli PRIVATE
+        ${IOKIT_FRAMEWORK}
+        ${COREFOUNDATION_FRAMEWORK}
+        ${SECURITY_FRAMEWORK}
+    )
+endif()
+
+install(TARGETS cudabridge-cli
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+# Python API 헤더 설치
+install(FILES src/python/cudabridge_python.h
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/cudabridge
+)
+
+# Python 모듈 설치
+install(FILES src/python/cudabridge.py
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/python/cudabridge
+)
+
+# 로깅/eGPU 헤더 설치
+install(FILES src/logging/cb_log.h
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/cudabridge
+)
+install(FILES src/egpu/egpu_safety.h
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/cudabridge
 )
 
 # 테스트 빌드
@@ -176,9 +240,6 @@ if(BUILD_EXAMPLES)
     add_executable(example_bandwidth src/userspace/examples/bandwidth_test.c)
     target_link_libraries(example_bandwidth cudabridge)
 endif()
-
-# 설치 규칙
-include(GNUInstallDirs)
 
 install(TARGETS cudabridge cudabridge_static
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}

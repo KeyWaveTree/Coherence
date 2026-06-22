@@ -44,6 +44,7 @@ typedef struct CudaBridgeState {
     pthread_mutex_t         lock;
     HostAllocInfo           host_allocs[MAX_HOST_ALLOCS];
     int                     host_alloc_count;
+    bool                    simulation_mode;
 } CudaBridgeState;
 
 static CudaBridgeState g_state = { .initialized = false };
@@ -75,6 +76,20 @@ static NVGpuContext* get_current_gpu(void)
 static void set_error(cudaError_t error)
 {
     g_state.last_error = error;
+}
+
+static bool use_simulation_fallback(void)
+{
+    const char *mode = getenv("CUDABRIDGE_SIMULATION");
+    if (!mode || mode[0] == '\0') {
+        return true;
+    }
+
+    if (strcmp(mode, "0") == 0 || strcmp(mode, "off") == 0 || strcmp(mode, "false") == 0) {
+        return false;
+    }
+
+    return true;
 }
 
 /* 전방 선언 */
@@ -155,31 +170,47 @@ cudaError_t cudaBridgeInit(void)
 
     if (g_state.gpu_count == 0) {
         CUDA_LOG("No NVIDIA GPUs found via eGPU");
+
+        if (!use_simulation_fallback()) {
+            CUDA_ERR_LOG("Simulation fallback disabled (set CUDABRIDGE_SIMULATION=1 to enable)");
+            usb4_controller_shutdown(&g_state.usb4_ctx);
+            pcie_tunnel_shutdown(&g_state.pcie_ctx);
+            set_error(cudaErrorNoDevice);
+            return cudaErrorNoDevice;
+        }
+
         /* 시뮬레이션 모드: 가상 GPU 생성 */
         NVGpuContext *gpu = calloc(1, sizeof(NVGpuContext));
-        if (gpu) {
-            /* 시뮬레이션용 가상 GPU 설정 */
-            gpu->state = NV_GPU_STATE_READY;
-            strcpy(gpu->info.name, "CudaBridge Virtual GPU");
-            gpu->info.architecture = NV_ARCH_AMPERE;
-            gpu->info.vram_size = 8ULL * 1024 * 1024 * 1024;
-            gpu->info.compute_cap_major = 8;
-            gpu->info.compute_cap_minor = 6;
-            gpu->info.sm_info.count = 40;
-            gpu->info.sm_info.cores_per_sm = 128;
-            gpu->info.max_threads_per_block = 1024;
-            gpu->vram_free = gpu->info.vram_size;
-
-            g_state.gpu_contexts[g_state.gpu_count++] = gpu;
-            CUDA_LOG("Created virtual GPU for testing");
+        if (!gpu) {
+            set_error(cudaErrorMemoryAllocation);
+            return cudaErrorMemoryAllocation;
         }
+
+        gpu->state = NV_GPU_STATE_READY;
+        strcpy(gpu->info.name, "CudaBridge Virtual GPU");
+        gpu->info.architecture = NV_ARCH_AMPERE;
+        gpu->info.vram_size = 8ULL * 1024 * 1024 * 1024;
+        gpu->info.compute_cap_major = 8;
+        gpu->info.compute_cap_minor = 6;
+        gpu->info.sm_info.count = 40;
+        gpu->info.sm_info.cores_per_sm = 128;
+        gpu->info.max_threads_per_block = 1024;
+        gpu->vram_free = gpu->info.vram_size;
+
+        g_state.gpu_contexts[g_state.gpu_count++] = gpu;
+        g_state.simulation_mode = true;
+        CUDA_LOG("Created virtual GPU for testing (simulation mode)");
     }
 
     g_state.current_device = 0;
     g_state.initialized = true;
     g_state.last_error = cudaSuccess;
 
-    CUDA_LOG("CudaBridge initialized: %d GPU(s) available", g_state.gpu_count);
+    if (!g_state.simulation_mode) {
+        CUDA_LOG("CudaBridge initialized in hardware mode: %d GPU(s) available", g_state.gpu_count);
+    } else {
+        CUDA_LOG("CudaBridge initialized in simulation mode: %d GPU(s) available", g_state.gpu_count);
+    }
 
     return cudaSuccess;
 }
@@ -1114,6 +1145,11 @@ cudaError_t cudaBridgeGetConnectionStatus(int *isConnected)
         return cudaSuccess;
     }
 
+    if (g_state.simulation_mode) {
+        *isConnected = 1;
+        return cudaSuccess;
+    }
+
     /* USB4 터널 상태 확인 */
     *isConnected = (g_state.usb4_ctx.tunnel_count > 0) ? 1 : 0;
 
@@ -1130,7 +1166,19 @@ cudaError_t cudaBridgeGetBandwidthInfo(size_t *upstreamBw, size_t *downstreamBw)
         return cudaErrorInvalidValue;
     }
 
-    if (!g_state.initialized || g_state.usb4_ctx.tunnel_count == 0) {
+    if (!g_state.initialized) {
+        *upstreamBw = 0;
+        *downstreamBw = 0;
+        return cudaSuccess;
+    }
+
+    if (g_state.simulation_mode) {
+        *upstreamBw = 32ULL * 1024 * 1024 * 1024 / 8;
+        *downstreamBw = 32ULL * 1024 * 1024 * 1024 / 8;
+        return cudaSuccess;
+    }
+
+    if (g_state.usb4_ctx.tunnel_count == 0) {
         *upstreamBw = 0;
         *downstreamBw = 0;
         return cudaSuccess;
@@ -1140,5 +1188,17 @@ cudaError_t cudaBridgeGetBandwidthInfo(size_t *upstreamBw, size_t *downstreamBw)
     *upstreamBw = 32ULL * 1024 * 1024 * 1024 / 8;    /* bytes/sec */
     *downstreamBw = 32ULL * 1024 * 1024 * 1024 / 8;
 
+    return cudaSuccess;
+}
+
+
+cudaError_t cudaBridgeIsSimulationMode(int *isSimulation)
+{
+    if (!isSimulation) {
+        set_error(cudaErrorInvalidValue);
+        return cudaErrorInvalidValue;
+    }
+
+    *isSimulation = g_state.simulation_mode ? 1 : 0;
     return cudaSuccess;
 }
