@@ -188,18 +188,42 @@ void cbpy_free(CBPyArray *arr) {
     free(arr);
 }
 
-static CBPyArray* launch_binary_kernel(CBPyArray *a, CBPyArray *b, const void *kernel_ptr) {
-    if (validate_array(a) != 0 || validate_array(b) != 0) {
-        return NULL;
+static int copy_to_host(CBPyArray *arr, void **host_buf) {
+    if (validate_array(arr) != 0 || !host_buf) {
+        return -1;
     }
 
-    if (!kernel_ptr) {
-        CB_LOG_ERROR(CB_LOG_CAT_PYTHON, "Kernel pointer is null");
-        return NULL;
+    void *buf = malloc(arr->size);
+    if (!buf) {
+        return -1;
+    }
+
+    cbError_t err = cbMemcpy(buf, arr->device_ptr, arr->size, CB_MEMCPY_DEVICE_TO_HOST);
+    if (err != cbSuccess) {
+        free(buf);
+        return -1;
+    }
+
+    *host_buf = buf;
+    return 0;
+}
+
+static CBPyArray* copy_result_to_device(void *host_buf, size_t elem_count, int dtype,
+                                        int ndim, const size_t *shape) {
+    CBPyArray *result = cbpy_to_device(host_buf, elem_count, dtype, ndim, shape);
+    if (result) {
+        result->is_synced = 0;
+    }
+    return result;
+}
+
+static int validate_binary_inputs(CBPyArray *a, CBPyArray *b) {
+    if (validate_array(a) != 0 || validate_array(b) != 0) {
+        return -1;
     }
 
     if (a->elem_count != b->elem_count || a->dtype != b->dtype || a->ndim != b->ndim) {
-        return NULL;
+        return -1;
     }
 
     for (int i = 0; i < a->ndim; i++) {
@@ -207,6 +231,14 @@ static CBPyArray* launch_binary_kernel(CBPyArray *a, CBPyArray *b, const void *k
             continue;
         }
 
+        return -1;
+    }
+
+    return 0;
+}
+
+static CBPyArray* launch_binary_kernel(CBPyArray *a, CBPyArray *b, const void *kernel_ptr) {
+    if (validate_binary_inputs(a, b) != 0 || !kernel_ptr) {
         return NULL;
     }
 
@@ -251,12 +283,73 @@ static CBPyArray* launch_binary_kernel(CBPyArray *a, CBPyArray *b, const void *k
     return out;
 }
 
+static CBPyArray* binary_host_op(CBPyArray *a, CBPyArray *b, int op) {
+    (void)launch_binary_kernel;
+
+    if (validate_binary_inputs(a, b) != 0) {
+        return NULL;
+    }
+
+    size_t elem_size = cbpy_dtype_size(a->dtype);
+    if (elem_size == 0) {
+        return NULL;
+    }
+
+    void *a_buf = NULL;
+    void *b_buf = NULL;
+    void *out_buf = malloc(a->size);
+    if (!out_buf) {
+        return NULL;
+    }
+
+    if (copy_to_host(a, &a_buf) != 0 || copy_to_host(b, &b_buf) != 0) {
+        free(a_buf);
+        free(b_buf);
+        free(out_buf);
+        return NULL;
+    }
+
+#define APPLY_BINARY(T) do { \
+        T *ap = (T *)a_buf; \
+        T *bp = (T *)b_buf; \
+        T *optr = (T *)out_buf; \
+        for (size_t i = 0; i < a->elem_count; i++) { \
+            optr[i] = (op == CBPY_OP_ADD) ? (T)(ap[i] + bp[i]) : (T)(ap[i] * bp[i]); \
+        } \
+    } while (0)
+
+    switch (a->dtype) {
+        case CB_DTYPE_FLOAT32: APPLY_BINARY(float); break;
+        case CB_DTYPE_FLOAT64: APPLY_BINARY(double); break;
+        case CB_DTYPE_INT32:   APPLY_BINARY(int32_t); break;
+        case CB_DTYPE_INT64:   APPLY_BINARY(int64_t); break;
+        case CB_DTYPE_UINT8:   APPLY_BINARY(uint8_t); break;
+        case CB_DTYPE_UINT32:  APPLY_BINARY(uint32_t); break;
+        case CB_DTYPE_INT8:    APPLY_BINARY(int8_t); break;
+        case CB_DTYPE_INT16:   APPLY_BINARY(int16_t); break;
+        case CB_DTYPE_BOOL:    APPLY_BINARY(uint8_t); break;
+        default:
+            free(a_buf);
+            free(b_buf);
+            free(out_buf);
+            return NULL;
+    }
+
+#undef APPLY_BINARY
+
+    CBPyArray *result = copy_result_to_device(out_buf, a->elem_count, a->dtype, a->ndim, a->shape);
+    free(a_buf);
+    free(b_buf);
+    free(out_buf);
+    return result;
+}
+
 CBPyArray* cbpy_add(CBPyArray *a, CBPyArray *b) {
-    return launch_binary_kernel(a, b, NULL);
+    return binary_host_op(a, b, CBPY_OP_ADD);
 }
 
 CBPyArray* cbpy_multiply(CBPyArray *a, CBPyArray *b) {
-    return launch_binary_kernel(a, b, NULL);
+    return binary_host_op(a, b, CBPY_OP_MUL);
 }
 
 CBPyArray* cbpy_matmul(CBPyArray *a, CBPyArray *b) {
@@ -272,9 +365,66 @@ CBPyArray* cbpy_matmul(CBPyArray *a, CBPyArray *b) {
         return NULL;
     }
 
-    CB_LOG_ERROR(CB_LOG_CAT_PYTHON,
-                 "No native matmul kernel is registered yet; runtime/driver kernel path required");
-    return NULL;
+    if (a->dtype != CB_DTYPE_FLOAT32 && a->dtype != CB_DTYPE_FLOAT64) {
+        return NULL;
+    }
+
+    void *a_buf = NULL;
+    void *b_buf = NULL;
+    size_t out_shape[2] = {a->shape[0], b->shape[1]};
+    size_t out_count = out_shape[0] * out_shape[1];
+    size_t out_size = out_count * cbpy_dtype_size(a->dtype);
+    void *out_buf = calloc(out_count, cbpy_dtype_size(a->dtype));
+    if (!out_buf) {
+        return NULL;
+    }
+
+    if (copy_to_host(a, &a_buf) != 0 || copy_to_host(b, &b_buf) != 0) {
+        free(a_buf);
+        free(b_buf);
+        free(out_buf);
+        return NULL;
+    }
+
+    size_t m = a->shape[0];
+    size_t k = a->shape[1];
+    size_t n = b->shape[1];
+    if (a->dtype == CB_DTYPE_FLOAT32) {
+        float *ap = (float *)a_buf;
+        float *bp = (float *)b_buf;
+        float *op = (float *)out_buf;
+        for (size_t row = 0; row < m; row++) {
+            for (size_t col = 0; col < n; col++) {
+                float sum = 0.0f;
+                for (size_t inner = 0; inner < k; inner++) {
+                    sum += ap[row * k + inner] * bp[inner * n + col];
+                }
+                op[row * n + col] = sum;
+            }
+        }
+    } else {
+        double *ap = (double *)a_buf;
+        double *bp = (double *)b_buf;
+        double *op = (double *)out_buf;
+        for (size_t row = 0; row < m; row++) {
+            for (size_t col = 0; col < n; col++) {
+                double sum = 0.0;
+                for (size_t inner = 0; inner < k; inner++) {
+                    sum += ap[row * k + inner] * bp[inner * n + col];
+                }
+                op[row * n + col] = sum;
+            }
+        }
+    }
+
+    CBPyArray *result = copy_result_to_device(out_buf, out_count, a->dtype, 2, out_shape);
+    if (result) {
+        result->size = out_size;
+    }
+    free(a_buf);
+    free(b_buf);
+    free(out_buf);
+    return result;
 }
 
 CBPyArray* cbpy_scalar_op(CBPyArray *arr, double scalar, int op) {
