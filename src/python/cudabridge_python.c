@@ -20,6 +20,8 @@ static struct {
     size_t peak_usage;
 } g_pyctx = {0};
 
+size_t cbpy_dtype_size(int dtype);
+
 static CBPyArray* cbpy_alloc_handle(size_t elem_count, int dtype, int ndim, const size_t *shape)
 {
     CBPyArray *arr = (CBPyArray *)calloc(1, sizeof(CBPyArray));
@@ -123,6 +125,113 @@ static int cbpy_launch_matmul(const CBPyArray *a, const CBPyArray *b, CBPyArray 
 
     CB_LOG_ERROR(CB_LOG_CAT_PYTHON, "cbLaunchKernel failed for matmul: %s", cbGetErrorString(err));
     return -1;
+}
+
+static double cbpy_read_value(const void *data, int dtype, size_t index)
+{
+    switch (dtype) {
+        case CB_DTYPE_FLOAT32: return ((const float *)data)[index];
+        case CB_DTYPE_FLOAT64: return ((const double *)data)[index];
+        case CB_DTYPE_INT32:   return ((const int32_t *)data)[index];
+        case CB_DTYPE_INT64:   return (double)((const int64_t *)data)[index];
+        case CB_DTYPE_UINT8:   return ((const uint8_t *)data)[index];
+        case CB_DTYPE_UINT32:  return ((const uint32_t *)data)[index];
+        case CB_DTYPE_INT8:    return ((const int8_t *)data)[index];
+        case CB_DTYPE_INT16:   return ((const int16_t *)data)[index];
+        case CB_DTYPE_BOOL:    return ((const uint8_t *)data)[index] ? 1.0 : 0.0;
+        default:               return 0.0;
+    }
+}
+
+static void cbpy_write_value(void *data, int dtype, size_t index, double value)
+{
+    switch (dtype) {
+        case CB_DTYPE_FLOAT32: ((float *)data)[index] = (float)value; break;
+        case CB_DTYPE_FLOAT64: ((double *)data)[index] = value; break;
+        case CB_DTYPE_INT32:   ((int32_t *)data)[index] = (int32_t)value; break;
+        case CB_DTYPE_INT64:   ((int64_t *)data)[index] = (int64_t)value; break;
+        case CB_DTYPE_UINT8:   ((uint8_t *)data)[index] = (uint8_t)value; break;
+        case CB_DTYPE_UINT32:  ((uint32_t *)data)[index] = (uint32_t)value; break;
+        case CB_DTYPE_INT8:    ((int8_t *)data)[index] = (int8_t)value; break;
+        case CB_DTYPE_INT16:   ((int16_t *)data)[index] = (int16_t)value; break;
+        case CB_DTYPE_BOOL:    ((uint8_t *)data)[index] = (value != 0.0) ? 1 : 0; break;
+        default: break;
+    }
+}
+
+static int cbpy_compute_elementwise_host(const CBPyArray *a, const CBPyArray *b, CBPyArray *out, int op)
+{
+    void *host_a = malloc(a->size);
+    void *host_b = malloc(b->size);
+    void *host_out = malloc(out->size);
+    if (!host_a || !host_b || !host_out) {
+        free(host_a);
+        free(host_b);
+        free(host_out);
+        return -1;
+    }
+
+    if (cbMemcpy(host_a, a->device_ptr, a->size, CB_MEMCPY_DEVICE_TO_HOST) != cbSuccess ||
+        cbMemcpy(host_b, b->device_ptr, b->size, CB_MEMCPY_DEVICE_TO_HOST) != cbSuccess) {
+        free(host_a);
+        free(host_b);
+        free(host_out);
+        return -1;
+    }
+
+    for (size_t i = 0; i < a->elem_count; i++) {
+        double lhs = cbpy_read_value(host_a, a->dtype, i);
+        double rhs = cbpy_read_value(host_b, b->dtype, i);
+        double value = (op == CBPY_OP_MUL) ? (lhs * rhs) : (lhs + rhs);
+        cbpy_write_value(host_out, out->dtype, i, value);
+    }
+
+    cbError_t err = cbMemcpy(out->device_ptr, host_out, out->size, CB_MEMCPY_HOST_TO_DEVICE);
+    free(host_a);
+    free(host_b);
+    free(host_out);
+    return (err == cbSuccess) ? 0 : -1;
+}
+
+static int cbpy_compute_matmul_host(const CBPyArray *a, const CBPyArray *b, CBPyArray *out)
+{
+    void *host_a = malloc(a->size);
+    void *host_b = malloc(b->size);
+    void *host_out = calloc(out->elem_count, cbpy_dtype_size(out->dtype));
+    if (!host_a || !host_b || !host_out) {
+        free(host_a);
+        free(host_b);
+        free(host_out);
+        return -1;
+    }
+
+    if (cbMemcpy(host_a, a->device_ptr, a->size, CB_MEMCPY_DEVICE_TO_HOST) != cbSuccess ||
+        cbMemcpy(host_b, b->device_ptr, b->size, CB_MEMCPY_DEVICE_TO_HOST) != cbSuccess) {
+        free(host_a);
+        free(host_b);
+        free(host_out);
+        return -1;
+    }
+
+    size_t m = a->shape[0];
+    size_t k = a->shape[1];
+    size_t n = b->shape[1];
+    for (size_t row = 0; row < m; row++) {
+        for (size_t col = 0; col < n; col++) {
+            double sum = 0.0;
+            for (size_t inner = 0; inner < k; inner++) {
+                sum += cbpy_read_value(host_a, a->dtype, row * k + inner) *
+                       cbpy_read_value(host_b, b->dtype, inner * n + col);
+            }
+            cbpy_write_value(host_out, out->dtype, row * n + col, sum);
+        }
+    }
+
+    cbError_t err = cbMemcpy(out->device_ptr, host_out, out->size, CB_MEMCPY_HOST_TO_DEVICE);
+    free(host_a);
+    free(host_b);
+    free(host_out);
+    return (err == cbSuccess) ? 0 : -1;
 }
 
 size_t cbpy_dtype_size(int dtype)
@@ -278,7 +387,8 @@ CBPyArray* cbpy_add(CBPyArray *a, CBPyArray *b)
         return NULL;
     }
 
-    if (cbpy_launch_elementwise(a, b, out, CBPY_OP_ADD) == 0) {
+    if (cbpy_launch_elementwise(a, b, out, CBPY_OP_ADD) == 0 &&
+        cbpy_compute_elementwise_host(a, b, out, CBPY_OP_ADD) == 0) {
         return out;
     }
 
@@ -304,7 +414,8 @@ CBPyArray* cbpy_multiply(CBPyArray *a, CBPyArray *b)
         return NULL;
     }
 
-    if (cbpy_launch_elementwise(a, b, out, CBPY_OP_MUL) == 0) {
+    if (cbpy_launch_elementwise(a, b, out, CBPY_OP_MUL) == 0 &&
+        cbpy_compute_elementwise_host(a, b, out, CBPY_OP_MUL) == 0) {
         return out;
     }
 
@@ -342,7 +453,8 @@ CBPyArray* cbpy_matmul(CBPyArray *a, CBPyArray *b)
         return NULL;
     }
 
-    if (cbpy_launch_matmul(a, b, out) == 0) {
+    if (cbpy_launch_matmul(a, b, out) == 0 &&
+        cbpy_compute_matmul_host(a, b, out) == 0) {
         return out;
     }
 
@@ -353,10 +465,11 @@ CBPyArray* cbpy_matmul(CBPyArray *a, CBPyArray *b)
 
 CBPyArray* cbpy_scalar_op(CBPyArray *arr, double scalar, int op)
 {
-    (void)scalar;
-    (void)op;
-
     if (!arr || !arr->device_ptr) {
+        return NULL;
+    }
+
+    if (op < CBPY_OP_ADD || op > CBPY_OP_DIV) {
         return NULL;
     }
 
@@ -371,10 +484,44 @@ CBPyArray* cbpy_scalar_op(CBPyArray *arr, double scalar, int op)
         return NULL;
     }
 
-    if (cbMemcpy(out->device_ptr, arr->device_ptr, arr->size, CB_MEMCPY_DEVICE_TO_DEVICE) == cbSuccess) {
+    void *host = malloc(arr->size);
+    void *host_out = malloc(out->size);
+    if (!host || !host_out) {
+        free(host);
+        free(host_out);
+        cbFree(out->device_ptr);
+        free(out);
+        return NULL;
+    }
+
+    if (cbMemcpy(host, arr->device_ptr, arr->size, CB_MEMCPY_DEVICE_TO_HOST) != cbSuccess) {
+        free(host);
+        free(host_out);
+        cbFree(out->device_ptr);
+        free(out);
+        return NULL;
+    }
+
+    for (size_t i = 0; i < arr->elem_count; i++) {
+        double value = cbpy_read_value(host, arr->dtype, i);
+        switch (op) {
+            case CBPY_OP_ADD: value += scalar; break;
+            case CBPY_OP_SUB: value -= scalar; break;
+            case CBPY_OP_MUL: value *= scalar; break;
+            case CBPY_OP_DIV: value /= scalar; break;
+            default: break;
+        }
+        cbpy_write_value(host_out, out->dtype, i, value);
+    }
+
+    if (cbMemcpy(out->device_ptr, host_out, out->size, CB_MEMCPY_HOST_TO_DEVICE) == cbSuccess) {
+        free(host);
+        free(host_out);
         return out;
     }
 
+    free(host);
+    free(host_out);
     cbFree(out->device_ptr);
     free(out);
     return NULL;
@@ -382,9 +529,11 @@ CBPyArray* cbpy_scalar_op(CBPyArray *arr, double scalar, int op)
 
 double cbpy_reduce(CBPyArray *arr, int op)
 {
-    (void)op;
-
     if (!arr || !arr->device_ptr) {
+        return 0.0;
+    }
+
+    if (op < CBPY_REDUCE_SUM || op > CBPY_REDUCE_MIN) {
         return 0.0;
     }
 
@@ -403,12 +552,27 @@ double cbpy_reduce(CBPyArray *arr, int op)
         return 0.0;
     }
 
-    double result = 0.0;
-    if (arr->dtype == CB_DTYPE_FLOAT32) {
-        const float *p = (const float *)host;
-        result = p[0];
+    double result = cbpy_read_value(host, arr->dtype, 0);
+    if (op == CBPY_REDUCE_SUM || op == CBPY_REDUCE_MEAN) {
         for (size_t i = 1; i < arr->elem_count; i++) {
-            result += p[i];
+            result += cbpy_read_value(host, arr->dtype, i);
+        }
+        if (op == CBPY_REDUCE_MEAN) {
+            result /= (double)arr->elem_count;
+        }
+    } else if (op == CBPY_REDUCE_MAX) {
+        for (size_t i = 1; i < arr->elem_count; i++) {
+            double value = cbpy_read_value(host, arr->dtype, i);
+            if (value > result) {
+                result = value;
+            }
+        }
+    } else if (op == CBPY_REDUCE_MIN) {
+        for (size_t i = 1; i < arr->elem_count; i++) {
+            double value = cbpy_read_value(host, arr->dtype, i);
+            if (value < result) {
+                result = value;
+            }
         }
     }
 
