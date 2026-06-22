@@ -241,6 +241,12 @@ cudaError_t cudaBridgeGetConnectionStatus(int *isConnected);
 cudaError_t cudaBridgeGetBandwidthInfo(size_t *upstreamBw,
                                        size_t *downstreamBw);
 
+/**
+ * 현재 시뮬레이션 모드 동작 여부 조회
+ * @param isSimulation 1이면 시뮬레이션 모드
+ */
+cudaError_t cudaBridgeIsSimulationMode(int *isSimulation);
+
 #ifdef __cplusplus
 }
 #endif
