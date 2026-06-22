@@ -112,6 +112,133 @@ static int validate_binary_args(CBPyArray *a, CBPyArray *b) {
     return 0;
 }
 
+
+static int binary_op_host(void *out_data, const void *a_data, const void *b_data,
+                          size_t elem_count, int dtype, int op) {
+    if (!out_data || !a_data || !b_data) return -1;
+
+#define BINARY_OP_CASE(dtype_const, c_type) \
+    case dtype_const: { \
+        c_type *out = (c_type *)out_data; \
+        const c_type *a = (const c_type *)a_data; \
+        const c_type *b = (const c_type *)b_data; \
+        for (size_t i = 0; i < elem_count; i++) { \
+            out[i] = (op == CBPY_OP_ADD) ? (c_type)(a[i] + b[i]) : (c_type)(a[i] * b[i]); \
+        } \
+        return 0; \
+    }
+
+    switch (dtype) {
+        BINARY_OP_CASE(CB_DTYPE_FLOAT32, float)
+        BINARY_OP_CASE(CB_DTYPE_FLOAT64, double)
+        BINARY_OP_CASE(CB_DTYPE_INT32, int32_t)
+        BINARY_OP_CASE(CB_DTYPE_INT64, int64_t)
+        BINARY_OP_CASE(CB_DTYPE_UINT8, uint8_t)
+        BINARY_OP_CASE(CB_DTYPE_UINT32, uint32_t)
+        BINARY_OP_CASE(CB_DTYPE_INT8, int8_t)
+        BINARY_OP_CASE(CB_DTYPE_INT16, int16_t)
+        BINARY_OP_CASE(CB_DTYPE_BOOL, uint8_t)
+        default:
+            return -1;
+    }
+
+#undef BINARY_OP_CASE
+}
+
+static cbError_t run_binary_host_fallback(CBPyArray *out, CBPyArray *a, CBPyArray *b, int op) {
+    if (!out || !a || !b) return cbErrorInvalidValue;
+
+    void *host_a = malloc(a->size);
+    void *host_b = malloc(b->size);
+    void *host_out = malloc(out->size);
+    if (!host_a || !host_b || !host_out) {
+        free(host_a);
+        free(host_b);
+        free(host_out);
+        return cbErrorOutOfMemory;
+    }
+
+    cbError_t err = cbMemcpy(host_a, a->device_ptr, a->size, CB_MEMCPY_DEVICE_TO_HOST);
+    if (err == cbSuccess) {
+        err = cbMemcpy(host_b, b->device_ptr, b->size, CB_MEMCPY_DEVICE_TO_HOST);
+    }
+    if (err == cbSuccess && binary_op_host(host_out, host_a, host_b, a->elem_count, a->dtype, op) != 0) {
+        err = cbErrorInvalidValue;
+    }
+    if (err == cbSuccess) {
+        err = cbMemcpy(out->device_ptr, host_out, out->size, CB_MEMCPY_HOST_TO_DEVICE);
+    }
+
+    free(host_a);
+    free(host_b);
+    free(host_out);
+    return err;
+}
+
+static int matmul_host(void *out_data, const void *a_data, const void *b_data,
+                       size_t m, size_t n, size_t k, int dtype) {
+    if (!out_data || !a_data || !b_data) return -1;
+
+#define MATMUL_CASE(dtype_const, c_type) \
+    case dtype_const: { \
+        c_type *out = (c_type *)out_data; \
+        const c_type *a = (const c_type *)a_data; \
+        const c_type *b = (const c_type *)b_data; \
+        for (size_t row = 0; row < m; row++) { \
+            for (size_t col = 0; col < n; col++) { \
+                c_type sum = (c_type)0; \
+                for (size_t inner = 0; inner < k; inner++) { \
+                    sum = (c_type)(sum + (c_type)(a[row * k + inner] * b[inner * n + col])); \
+                } \
+                out[row * n + col] = sum; \
+            } \
+        } \
+        return 0; \
+    }
+
+    switch (dtype) {
+        MATMUL_CASE(CB_DTYPE_FLOAT32, float)
+        MATMUL_CASE(CB_DTYPE_FLOAT64, double)
+        MATMUL_CASE(CB_DTYPE_INT32, int32_t)
+        MATMUL_CASE(CB_DTYPE_INT64, int64_t)
+        default:
+            return -1;
+    }
+
+#undef MATMUL_CASE
+}
+
+static cbError_t run_matmul_host_fallback(CBPyArray *out, CBPyArray *a, CBPyArray *b) {
+    if (!out || !a || !b) return cbErrorInvalidValue;
+
+    void *host_a = malloc(a->size);
+    void *host_b = malloc(b->size);
+    void *host_out = malloc(out->size);
+    if (!host_a || !host_b || !host_out) {
+        free(host_a);
+        free(host_b);
+        free(host_out);
+        return cbErrorOutOfMemory;
+    }
+
+    cbError_t err = cbMemcpy(host_a, a->device_ptr, a->size, CB_MEMCPY_DEVICE_TO_HOST);
+    if (err == cbSuccess) {
+        err = cbMemcpy(host_b, b->device_ptr, b->size, CB_MEMCPY_DEVICE_TO_HOST);
+    }
+    if (err == cbSuccess && matmul_host(host_out, host_a, host_b,
+                                        a->shape[0], b->shape[1], a->shape[1], a->dtype) != 0) {
+        err = cbErrorInvalidValue;
+    }
+    if (err == cbSuccess) {
+        err = cbMemcpy(out->device_ptr, host_out, out->size, CB_MEMCPY_HOST_TO_DEVICE);
+    }
+
+    free(host_a);
+    free(host_b);
+    free(host_out);
+    return err;
+}
+
 static cbError_t launch_elementwise_kernel(const void *kernel,
                                            void *out_ptr,
                                            void *a_ptr,
@@ -260,7 +387,12 @@ CBPyArray* cbpy_add(CBPyArray *a, CBPyArray *b) {
     if (a->dtype == CB_DTYPE_FLOAT64) kernel = (const void*)cbpy_kernel_add_f64;
     if (a->dtype == CB_DTYPE_INT32) kernel = (const void*)cbpy_kernel_add_i32;
 
-    cbError_t err = launch_elementwise_kernel(kernel, out->device_ptr, a->device_ptr, b->device_ptr, a->elem_count);
+    cbError_t err = kernel
+        ? launch_elementwise_kernel(kernel, out->device_ptr, a->device_ptr, b->device_ptr, a->elem_count)
+        : cbErrorInvalidKernel;
+    if (err != cbSuccess) {
+        err = run_binary_host_fallback(out, a, b, CBPY_OP_ADD);
+    }
     if (err == cbSuccess) {
         return out;
     }
@@ -281,7 +413,12 @@ CBPyArray* cbpy_multiply(CBPyArray *a, CBPyArray *b) {
     if (a->dtype == CB_DTYPE_FLOAT64) kernel = (const void*)cbpy_kernel_mul_f64;
     if (a->dtype == CB_DTYPE_INT32) kernel = (const void*)cbpy_kernel_mul_i32;
 
-    cbError_t err = launch_elementwise_kernel(kernel, out->device_ptr, a->device_ptr, b->device_ptr, a->elem_count);
+    cbError_t err = kernel
+        ? launch_elementwise_kernel(kernel, out->device_ptr, a->device_ptr, b->device_ptr, a->elem_count)
+        : cbErrorInvalidKernel;
+    if (err != cbSuccess) {
+        err = run_binary_host_fallback(out, a, b, CBPY_OP_MUL);
+    }
     if (err == cbSuccess) {
         return out;
     }
@@ -306,13 +443,18 @@ CBPyArray* cbpy_matmul(CBPyArray *a, CBPyArray *b) {
     if (a->dtype == CB_DTYPE_FLOAT32) kernel = (const void*)cbpy_kernel_matmul_f32;
     if (a->dtype == CB_DTYPE_FLOAT64) kernel = (const void*)cbpy_kernel_matmul_f64;
 
-    cbError_t err = launch_matmul_kernel(kernel,
-                                         out->device_ptr,
-                                         a->device_ptr,
-                                         b->device_ptr,
-                                         a->shape[0],
-                                         b->shape[1],
-                                         a->shape[1]);
+    cbError_t err = kernel
+        ? launch_matmul_kernel(kernel,
+                               out->device_ptr,
+                               a->device_ptr,
+                               b->device_ptr,
+                               a->shape[0],
+                               b->shape[1],
+                               a->shape[1])
+        : cbErrorInvalidKernel;
+    if (err != cbSuccess) {
+        err = run_matmul_host_fallback(out, a, b);
+    }
     if (err == cbSuccess) {
         return out;
     }
